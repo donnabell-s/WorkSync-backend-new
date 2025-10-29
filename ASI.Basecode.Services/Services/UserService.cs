@@ -24,7 +24,7 @@ namespace ASI.Basecode.Services.Services
             user = new User();
             var passwordKey = PasswordManager.EncryptPassword(password);
             user = _repository.GetUsers().Where(x => x.UserId == userId &&
-                                                     x.Password == passwordKey).FirstOrDefault();
+                                                     x.PasswordHash == passwordKey).FirstOrDefault();
 
             return user != null ? LoginResult.Success : LoginResult.Failed;
         }

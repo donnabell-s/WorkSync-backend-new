@@ -79,14 +79,29 @@ namespace ASI.Basecode.WebApp.Authentication
         public ClaimsIdentity CreateClaimsIdentity(User user)
         {
             var token = _configuration.GetTokenAuthentication();
-            //TODO
+
+            // Build a safe display name: prefer first+last name, fallback to email, then userId
+            var displayName = string.Empty;
+            if (!string.IsNullOrWhiteSpace(user?.Fname) || !string.IsNullOrWhiteSpace(user?.Lname))
+            {
+                displayName = $"{user?.Fname?.Trim()} {user?.Lname?.Trim()}".Trim();
+            }
+            else if (!string.IsNullOrWhiteSpace(user?.Email))
+            {
+                displayName = user.Email;
+            }
+            else
+            {
+                displayName = user?.UserId ?? string.Empty;
+            }
+
             var claims = new List<Claim>()
             {
-                new Claim(ClaimTypes.NameIdentifier, user.UserId, ClaimValueTypes.String, Const.Issuer),
-                new Claim(ClaimTypes.Name, user.Name, ClaimValueTypes.String, Const.Issuer),
+                new Claim(ClaimTypes.NameIdentifier, user.UserId ?? string.Empty, ClaimValueTypes.String, Const.Issuer),
+                new Claim(ClaimTypes.Name, displayName, ClaimValueTypes.String, Const.Issuer),
 
-                new Claim("UserId", user.UserId, ClaimValueTypes.String, Const.Issuer),
-                new Claim("UserName", user.Name, ClaimValueTypes.String, Const.Issuer),
+                new Claim("UserId", user.UserId ?? string.Empty, ClaimValueTypes.String, Const.Issuer),
+                new Claim("UserName", displayName, ClaimValueTypes.String, Const.Issuer),
             };
             return new ClaimsIdentity(claims, Const.AuthenticationScheme);
         }
