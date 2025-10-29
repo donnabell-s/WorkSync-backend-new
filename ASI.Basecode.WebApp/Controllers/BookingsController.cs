@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 namespace ASI.Basecode.WebApp.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/[controller]/[action]")]
     public class BookingsController : ASI.Basecode.WebApp.Mvc.ControllerBase<BookingsController>
     {
         private readonly IBookingService _bookingService;

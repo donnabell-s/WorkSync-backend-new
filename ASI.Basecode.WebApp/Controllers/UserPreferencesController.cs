@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 namespace ASI.Basecode.WebApp.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/[controller]/[action]")]
     public class UserPreferencesController : ASI.Basecode.WebApp.Mvc.ControllerBase<UserPreferencesController>
     {
         private readonly IUserPreferenceService _prefService;

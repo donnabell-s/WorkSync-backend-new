@@ -6,11 +6,13 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using AutoMapper;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace ASI.Basecode.WebApp.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/[controller]/[action]")]
     public class BookingLogsController : ASI.Basecode.WebApp.Mvc.ControllerBase<BookingLogsController>
     {
         private readonly IBookingLogService _logService;
@@ -27,39 +29,39 @@ namespace ASI.Basecode.WebApp.Controllers
         }
 
         [HttpGet]
-        public IActionResult Get()
+        public async Task<IActionResult> Get(CancellationToken cancellationToken)
         {
-            var items = _logService.GetBookingLogs().ToList();
+            var items = await _logService.GetBookingLogsAsync(cancellationToken);
             return Ok(items);
         }
 
         [HttpGet("booking/{bookingId}")]
-        public IActionResult GetByBooking(int bookingId)
+        public async Task<IActionResult> GetByBooking(int bookingId, CancellationToken cancellationToken)
         {
-            var items = _logService.GetByBookingId(bookingId).ToList();
+            var items = await _logService.GetByBookingIdAsync(bookingId, cancellationToken);
             return Ok(items);
         }
 
         [HttpGet("{id}")]
-        public IActionResult Get(int id)
+        public async Task<IActionResult> Get(int id, CancellationToken cancellationToken)
         {
-            var item = _logService.GetById(id);
+            var item = await _logService.GetByIdAsync(id, cancellationToken);
             if (item == null) return NotFound();
             return Ok(item);
         }
 
         [HttpPost]
-        public IActionResult Post([FromBody] BookingLog model)
+        public async Task<IActionResult> Post([FromBody] BookingLog model, CancellationToken cancellationToken)
         {
             if (model == null) return BadRequest();
-            _logService.Create(model);
+            await _logService.CreateAsync(model, cancellationToken);
             return CreatedAtAction(nameof(Get), new { id = model.BookingLogId }, model);
         }
 
         [HttpDelete("{id}")]
-        public IActionResult Delete(int id)
+        public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
         {
-            _logService.Delete(id);
+            await _logService.DeleteAsync(id, cancellationToken);
             return NoContent();
         }
     }

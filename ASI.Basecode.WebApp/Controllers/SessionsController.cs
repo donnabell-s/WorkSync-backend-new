@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 namespace ASI.Basecode.WebApp.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/[controller]/[action]")]
     public class SessionsController : ASI.Basecode.WebApp.Mvc.ControllerBase<SessionsController>
     {
         private readonly ISessionService _sessionService;
