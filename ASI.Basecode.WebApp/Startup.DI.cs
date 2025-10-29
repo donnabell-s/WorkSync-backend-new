@@ -36,6 +36,11 @@ namespace ASI.Basecode.WebApp
 
             // Repositories
             this._services.AddScoped<IUserRepository, UserRepository>();
+            this._services.AddScoped<IBookingRepository, BookingRepository>();
+            this._services.AddScoped<IBookingLogRepository, BookingLogRepository>();
+            this._services.AddScoped<IRoomRepository, RoomRepository>();
+            this._services.AddScoped<ISessionRepository, SessionRepository>();
+            this._services.AddScoped<IUserPreferenceRepository, UserPreferenceRepository>();
 
             // Manager Class
             this._services.AddScoped<SignInManager>();
