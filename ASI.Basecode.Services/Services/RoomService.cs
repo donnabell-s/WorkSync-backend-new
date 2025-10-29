@@ -2,6 +2,9 @@ using ASI.Basecode.Data.Interfaces;
 using ASI.Basecode.Data.Models;
 using ASI.Basecode.Services.Interfaces;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Collections.Generic;
 
 namespace ASI.Basecode.Services.Services
 {
@@ -38,6 +41,36 @@ namespace ASI.Basecode.Services.Services
             if (entity == null) return;
             _roomRepository.Delete(entity);
             _unitOfWork.SaveChanges();
+        }
+
+        public async Task<List<Room>> GetRoomsAsync(CancellationToken cancellationToken = default)
+        {
+            return await _roomRepository.GetRoomsAsync(cancellationToken);
+        }
+
+        public async Task<Room> GetByIdAsync(string roomId, CancellationToken cancellationToken = default)
+        {
+            return await _roomRepository.GetByIdAsync(roomId, cancellationToken);
+        }
+
+        public async Task CreateAsync(Room room, CancellationToken cancellationToken = default)
+        {
+            await _roomRepository.AddAsync(room, cancellationToken);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+
+        public async Task UpdateAsync(Room room, CancellationToken cancellationToken = default)
+        {
+            _roomRepository.Update(room);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+
+        public async Task DeleteAsync(string roomId, CancellationToken cancellationToken = default)
+        {
+            var entity = await _roomRepository.GetByIdAsync(roomId, cancellationToken);
+            if (entity == null) return;
+            _roomRepository.Delete(entity);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
     }
 }

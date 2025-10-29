@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using AutoMapper;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace ASI.Basecode.WebApp.Controllers
 {
@@ -27,40 +29,40 @@ namespace ASI.Basecode.WebApp.Controllers
         }
 
         [HttpGet]
-        public IActionResult Get()
+        public async Task<IActionResult> Get(CancellationToken cancellationToken)
         {
-            var items = _bookingService.GetBookings().ToList();
+            var items = await _bookingService.GetBookingsAsync(cancellationToken);
             return Ok(items);
         }
 
         [HttpGet("{id}")]
-        public IActionResult Get(int id)
+        public async Task<IActionResult> Get(int id, CancellationToken cancellationToken)
         {
-            var item = _bookingService.GetById(id);
+            var item = await _bookingService.GetByIdAsync(id, cancellationToken);
             if (item == null) return NotFound();
             return Ok(item);
         }
 
         [HttpPost]
-        public IActionResult Post([FromBody] Booking model)
+        public async Task<IActionResult> Post([FromBody] Booking model, CancellationToken cancellationToken)
         {
             if (model == null) return BadRequest();
-            _bookingService.Create(model);
+            await _bookingService.CreateAsync(model, cancellationToken);
             return CreatedAtAction(nameof(Get), new { id = model.BookingId }, model);
         }
 
         [HttpPut("{id}")]
-        public IActionResult Put(int id, [FromBody] Booking model)
+        public async Task<IActionResult> Put(int id, [FromBody] Booking model, CancellationToken cancellationToken)
         {
             if (model == null || model.BookingId != id) return BadRequest();
-            _bookingService.Update(model);
+            await _bookingService.UpdateAsync(model, cancellationToken);
             return NoContent();
         }
 
         [HttpDelete("{id}")]
-        public IActionResult Delete(int id)
+        public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
         {
-            _bookingService.Delete(id);
+            await _bookingService.DeleteAsync(id, cancellationToken);
             return NoContent();
         }
     }

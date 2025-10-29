@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using AutoMapper;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace ASI.Basecode.WebApp.Controllers
 {
@@ -27,40 +29,40 @@ namespace ASI.Basecode.WebApp.Controllers
         }
 
         [HttpGet]
-        public IActionResult Get()
+        public async Task<IActionResult> Get(CancellationToken cancellationToken)
         {
-            var items = _roomService.GetRooms().ToList();
+            var items = await _roomService.GetRoomsAsync(cancellationToken);
             return Ok(items);
         }
 
         [HttpGet("{id}")]
-        public IActionResult Get(string id)
+        public async Task<IActionResult> Get(string id, CancellationToken cancellationToken)
         {
-            var item = _roomService.GetById(id);
+            var item = await _roomService.GetByIdAsync(id, cancellationToken);
             if (item == null) return NotFound();
             return Ok(item);
         }
 
         [HttpPost]
-        public IActionResult Post([FromBody] Room model)
+        public async Task<IActionResult> Post([FromBody] Room model, CancellationToken cancellationToken)
         {
             if (model == null) return BadRequest();
-            _roomService.Create(model);
+            await _roomService.CreateAsync(model, cancellationToken);
             return CreatedAtAction(nameof(Get), new { id = model.RoomId }, model);
         }
 
         [HttpPut("{id}")]
-        public IActionResult Put(string id, [FromBody] Room model)
+        public async Task<IActionResult> Put(string id, [FromBody] Room model, CancellationToken cancellationToken)
         {
             if (model == null || model.RoomId != id) return BadRequest();
-            _roomService.Update(model);
+            await _roomService.UpdateAsync(model, cancellationToken);
             return NoContent();
         }
 
         [HttpDelete("{id}")]
-        public IActionResult Delete(string id)
+        public async Task<IActionResult> Delete(string id, CancellationToken cancellationToken)
         {
-            _roomService.Delete(id);
+            await _roomService.DeleteAsync(id, cancellationToken);
             return NoContent();
         }
     }

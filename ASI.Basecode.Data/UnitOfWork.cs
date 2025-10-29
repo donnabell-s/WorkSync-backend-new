@@ -1,6 +1,8 @@
 ﻿using ASI.Basecode.Data.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using System;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace ASI.Basecode.Data
 {
@@ -30,6 +32,14 @@ namespace ASI.Basecode.Data
         public void SaveChanges()
         {
             Database.SaveChanges();
+        }
+
+        /// <summary>
+        /// Saves the changes to database asynchronously
+        /// </summary>
+        public Task SaveChangesAsync(CancellationToken cancellationToken = default)
+        {
+            return Database.SaveChangesAsync(cancellationToken);
         }
 
         /// <summary>

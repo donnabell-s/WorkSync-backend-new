@@ -3,6 +3,9 @@ using ASI.Basecode.Data.Models;
 using Basecode.Data.Repositories;
 using Microsoft.EntityFrameworkCore;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Collections.Generic;
 
 namespace ASI.Basecode.Data.Repositories
 {
@@ -19,5 +22,20 @@ namespace ASI.Basecode.Data.Repositories
         public void Update(Room entity) => SetEntityState(entity, EntityState.Modified);
 
         public void Delete(Room entity) => GetDbSet<Room>().Remove(entity);
+
+        public async Task<List<Room>> GetRoomsAsync(CancellationToken cancellationToken = default)
+        {
+            return await GetDbSet<Room>().ToListAsync(cancellationToken);
+        }
+
+        public async Task<Room> GetByIdAsync(string roomId, CancellationToken cancellationToken = default)
+        {
+            return await Context.Set<Room>().FindAsync(new object[] { roomId }, cancellationToken).AsTask();
+        }
+
+        public async Task AddAsync(Room entity, CancellationToken cancellationToken = default)
+        {
+            await GetDbSet<Room>().AddAsync(entity, cancellationToken);
+        }
     }
 }

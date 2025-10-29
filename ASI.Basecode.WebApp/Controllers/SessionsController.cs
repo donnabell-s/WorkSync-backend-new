@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using AutoMapper;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace ASI.Basecode.WebApp.Controllers
 {
@@ -27,40 +29,40 @@ namespace ASI.Basecode.WebApp.Controllers
         }
 
         [HttpGet]
-        public IActionResult Get()
+        public async Task<IActionResult> Get(CancellationToken cancellationToken)
         {
-            var items = _sessionService.GetSessions().ToList();
+            var items = await _sessionService.GetSessionsAsync(cancellationToken);
             return Ok(items);
         }
 
         [HttpGet("{id}")]
-        public IActionResult Get(string id)
+        public async Task<IActionResult> Get(string id, CancellationToken cancellationToken)
         {
-            var item = _sessionService.GetById(id);
+            var item = await _sessionService.GetByIdAsync(id, cancellationToken);
             if (item == null) return NotFound();
             return Ok(item);
         }
 
         [HttpPost]
-        public IActionResult Post([FromBody] Session model)
+        public async Task<IActionResult> Post([FromBody] Session model, CancellationToken cancellationToken)
         {
             if (model == null) return BadRequest();
-            _sessionService.Create(model);
+            await _sessionService.CreateAsync(model, cancellationToken);
             return CreatedAtAction(nameof(Get), new { id = model.SessionId }, model);
         }
 
         [HttpPut("{id}")]
-        public IActionResult Put(string id, [FromBody] Session model)
+        public async Task<IActionResult> Put(string id, [FromBody] Session model, CancellationToken cancellationToken)
         {
             if (model == null || model.SessionId != id) return BadRequest();
-            _sessionService.Update(model);
+            await _sessionService.UpdateAsync(model, cancellationToken);
             return NoContent();
         }
 
         [HttpDelete("{id}")]
-        public IActionResult Delete(string id)
+        public async Task<IActionResult> Delete(string id, CancellationToken cancellationToken)
         {
-            _sessionService.Delete(id);
+            await _sessionService.DeleteAsync(id, cancellationToken);
             return NoContent();
         }
     }

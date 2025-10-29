@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using AutoMapper;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace ASI.Basecode.WebApp.Controllers
 {
@@ -27,40 +29,40 @@ namespace ASI.Basecode.WebApp.Controllers
         }
 
         [HttpGet("user/{userId}")]
-        public IActionResult GetByUser(string userId)
+        public async Task<IActionResult> GetByUser(string userId, CancellationToken cancellationToken)
         {
-            var items = _prefService.GetByUser(userId).ToList();
+            var items = await _prefService.GetByUserAsync(userId, cancellationToken);
             return Ok(items);
         }
 
         [HttpGet("{id}")]
-        public IActionResult Get(int id)
+        public async Task<IActionResult> Get(int id, CancellationToken cancellationToken)
         {
-            var item = _prefService.GetById(id);
+            var item = await _prefService.GetByIdAsync(id, cancellationToken);
             if (item == null) return NotFound();
             return Ok(item);
         }
 
         [HttpPost]
-        public IActionResult Post([FromBody] UserPreference model)
+        public async Task<IActionResult> Post([FromBody] UserPreference model, CancellationToken cancellationToken)
         {
             if (model == null) return BadRequest();
-            _prefService.Create(model);
+            await _prefService.CreateAsync(model, cancellationToken);
             return CreatedAtAction(nameof(Get), new { id = model.PrefId }, model);
         }
 
         [HttpPut("{id}")]
-        public IActionResult Put(int id, [FromBody] UserPreference model)
+        public async Task<IActionResult> Put(int id, [FromBody] UserPreference model, CancellationToken cancellationToken)
         {
             if (model == null || model.PrefId != id) return BadRequest();
-            _prefService.Update(model);
+            await _prefService.UpdateAsync(model, cancellationToken);
             return NoContent();
         }
 
         [HttpDelete("{id}")]
-        public IActionResult Delete(int id)
+        public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
         {
-            _prefService.Delete(id);
+            await _prefService.DeleteAsync(id, cancellationToken);
             return NoContent();
         }
     }
