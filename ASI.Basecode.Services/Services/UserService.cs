@@ -28,5 +28,15 @@ namespace ASI.Basecode.Services.Services
 
             return user != null ? LoginResult.Success : LoginResult.Failed;
         }
+
+        public LoginResult AuthenticateUserByEmail(string email, string password, ref User user)
+        {
+            user = new User();
+            var passwordKey = PasswordManager.EncryptPassword(password);
+            user = _repository.GetUsers().Where(x => x.Email == email &&
+                                                     x.PasswordHash == passwordKey).FirstOrDefault();
+
+            return user != null ? LoginResult.Success : LoginResult.Failed;
+        }
     }
 }

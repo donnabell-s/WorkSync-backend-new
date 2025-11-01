@@ -15,7 +15,7 @@ namespace ASI.Basecode.Data.Repositories
 
         public IQueryable<UserPreference> GetPreferences() => GetDbSet<UserPreference>();
 
-        public IQueryable<UserPreference> GetByUser(string userId) => GetDbSet<UserPreference>().Where(p => p.UserId == userId);
+        public IQueryable<UserPreference> GetByUser(int userId) => GetDbSet<UserPreference>().Where(p => p.UserRefId == userId);
 
         public UserPreference GetById(int prefId) => Context.Set<UserPreference>().Find(prefId);
 
@@ -30,9 +30,9 @@ namespace ASI.Basecode.Data.Repositories
             return await GetDbSet<UserPreference>().ToListAsync(cancellationToken);
         }
 
-        public async Task<List<UserPreference>> GetByUserAsync(string userId, CancellationToken cancellationToken = default)
+        public async Task<List<UserPreference>> GetByUserAsync(int userId, CancellationToken cancellationToken = default)
         {
-            return await GetDbSet<UserPreference>().Where(p => p.UserId == userId).ToListAsync(cancellationToken);
+            return await GetDbSet<UserPreference>().Where(p => p.UserRefId == userId).ToListAsync(cancellationToken);
         }
 
         public async Task<UserPreference> GetByIdAsync(int prefId, CancellationToken cancellationToken = default)

@@ -8,12 +8,13 @@ namespace ASI.Basecode.Services.Interfaces
 {
     public interface IUserPreferenceService
     {
-        IQueryable<UserPreference> GetByUser(string userId);
+        IQueryable<UserPreference> GetByUser(int userId);
         UserPreference GetById(int prefId);
         void Create(UserPreference pref);
         void Update(UserPreference pref);
         void Delete(int prefId);
 
+        Task<List<UserPreference>> GetByUserAsync(int userId, CancellationToken cancellationToken = default);
         Task<List<UserPreference>> GetByUserAsync(string userId, CancellationToken cancellationToken = default);
         Task<UserPreference> GetByIdAsync(int prefId, CancellationToken cancellationToken = default);
         Task CreateAsync(UserPreference pref, CancellationToken cancellationToken = default);

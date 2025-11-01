@@ -2,6 +2,7 @@
 using ASI.Basecode.Resources.Constants;
 using ASI.Basecode.WebApp.Extensions.Configuration;
 using ASI.Basecode.WebApp.Models;
+using ASI.Basecode.Services.Interfaces;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
@@ -21,6 +22,7 @@ namespace ASI.Basecode.WebApp.Authentication
     {
         private readonly IConfiguration _configuration;
         private readonly IHttpContextAccessor _httpContextAccessor;
+        private readonly IUserService _userService;
 
         /// <summary>
         /// Gets or sets the user.
@@ -38,13 +40,15 @@ namespace ASI.Basecode.WebApp.Authentication
         /// Initializes a new instance of the SignInManager class.
         /// </summary>
         /// <param name="configuration">The configuration.</param>
-        /// <param name="accountService">The account service.</param>
         /// <param name="httpContextAccessor">The HTTP context accessor.</param>
+        /// <param name="userService">The user service.</param>
         public SignInManager(IConfiguration configuration,
-                             IHttpContextAccessor httpContextAccessor)
+                             IHttpContextAccessor httpContextAccessor,
+                             IUserService userService)
         {
             this._configuration = configuration;
             this._httpContextAccessor = httpContextAccessor;
+            this._userService = userService;
             user = new LoginUser();
         }
 
@@ -59,7 +63,15 @@ namespace ASI.Basecode.WebApp.Authentication
             ClaimsIdentity claimsIdentity = null;
             User userData = new User();
 
-            user.loginResult = LoginResult.Success;//TODO this._accountService.AuthenticateUser(username, password, ref userData);
+            if (this._userService != null)
+            {
+                user.loginResult = this._userService.AuthenticateUser(username, password, ref userData);
+            }
+            else
+            {
+                // Fallback to previous stub behavior
+                user.loginResult = LoginResult.Success; // TODO implement real authentication
+            }
 
             if (user.loginResult == LoginResult.Failed)
             {
@@ -102,6 +114,10 @@ namespace ASI.Basecode.WebApp.Authentication
 
                 new Claim("UserId", user.UserId ?? string.Empty, ClaimValueTypes.String, Const.Issuer),
                 new Claim("UserName", displayName, ClaimValueTypes.String, Const.Issuer),
+
+                // Add role claims so JWT contains role information (both ClaimTypes.Role and "role" for compatibility)
+                new Claim(ClaimTypes.Role, user?.Role ?? "user", ClaimValueTypes.String, Const.Issuer),
+                new Claim("role", user?.Role ?? "user", ClaimValueTypes.String, Const.Issuer),
             };
             return new ClaimsIdentity(claims, Const.AuthenticationScheme);
         }

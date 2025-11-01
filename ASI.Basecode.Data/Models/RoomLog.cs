@@ -9,7 +9,7 @@ public partial class RoomLog
 
     public string RoomId { get; set; }
 
-    public string UserId { get; set; }
+    public int? UserRefId { get; set; }
 
     public string EventType { get; set; }
 

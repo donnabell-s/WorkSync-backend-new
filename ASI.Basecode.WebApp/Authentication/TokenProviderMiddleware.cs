@@ -5,6 +5,7 @@ using System;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace ASI.Basecode.WebApp.Authentication
 {
@@ -69,7 +70,29 @@ namespace ASI.Basecode.WebApp.Authentication
             var now = DateTime.UtcNow;
             var username = context.Request.Form["username"];
             var password = context.Request.Form["password"];
-            var identity = await _options.IdentityResolver(username, password);
+
+            ClaimsIdentity identity = null;
+
+            // Try resolving SignInManager from DI to use DB-backed authentication
+            try
+            {
+                var signInManager = context.RequestServices.GetService<SignInManager>();
+                if (signInManager != null)
+                {
+                    identity = await signInManager.GetClaimsIdentity(username, password);
+                }
+            }
+            catch
+            {
+                // ignore and fall back
+                identity = null;
+            }
+
+            // Fallback to configured identity resolver (existing behavior)
+            if (identity == null && _options.IdentityResolver != null)
+            {
+                identity = await _options.IdentityResolver(username, password);
+            }
 
             if (identity == null)
             {
@@ -126,7 +149,8 @@ namespace ASI.Basecode.WebApp.Authentication
 
             if (options.IdentityResolver == null)
             {
-                throw new ArgumentNullException(nameof(TokenProviderOptions.IdentityResolver));
+                // IdentityResolver may be null now since we can use DI-resolved SignInManager
+                // throw new ArgumentNullException(nameof(TokenProviderOptions.IdentityResolver));
             }
 
             if (options.SigningCredentials == null)

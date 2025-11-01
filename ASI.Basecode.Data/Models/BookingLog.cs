@@ -9,7 +9,7 @@ public partial class BookingLog
 
     public int? BookingId { get; set; }
 
-    public string UserId { get; set; }
+    public int? UserRefId { get; set; }
 
     public string EventType { get; set; }
 

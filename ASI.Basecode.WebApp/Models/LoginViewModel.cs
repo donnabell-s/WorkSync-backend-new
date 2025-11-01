@@ -8,11 +8,12 @@ namespace ASI.Basecode.WebApp.Models
     /// </summary>
     public class LoginViewModel
     {
-        /// <summary>ユーザーID</summary>
-        [JsonPropertyName("userId")]
-        [Required(ErrorMessage = "UserId is required.")]
-        public string UserId { get; set; }
-        /// <summary>パスワード</summary>
+        /// <summary>Email</summary>
+        [JsonPropertyName("email")]
+        [Required(ErrorMessage = "Email is required.")]
+        [EmailAddress(ErrorMessage = "Invalid email format.")]
+        public string Email { get; set; }
+        /// <summary>Password</summary>
         [JsonPropertyName("password")]
         [Required(ErrorMessage = "Password is required.")]
         public string Password { get; set; }
