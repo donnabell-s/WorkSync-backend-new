@@ -26,8 +26,15 @@ namespace ASI.Basecode.WebApp
             var tokenValidationParametersFactory = this._services.BuildServiceProvider().GetService<TokenValidationParametersFactory>();
             var tokenValidationParameters = tokenValidationParametersFactory.Create();
 
-            this._services.AddAuthentication(Const.AuthenticationScheme)
-            .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
+            // Use JWT bearer as the default authentication scheme so Authorization: Bearer <token> works
+            this._services.AddAuthentication(options =>
+            {
+                options.DefaultAuthenticateScheme = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme;
+                // keep cookie scheme available for interactive sign-in
+                options.DefaultSignInScheme = Const.AuthenticationScheme;
+            })
+            .AddJwtBearer(Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme, options =>
             {
                 options.TokenValidationParameters = tokenValidationParameters;
             })

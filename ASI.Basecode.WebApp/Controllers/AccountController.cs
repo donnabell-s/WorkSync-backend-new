@@ -166,44 +166,7 @@ namespace ASI.Basecode.WebApp.Controllers
             return Ok();
         }
 
-        /// <summary>
-        /// Change the role of a user
-        /// This action is restricted to admins and superadmins.
-        /// Superadmins have the capability to assign the superadmin role.
-        /// </summary>
-        [HttpPost]
-        [Authorize(Roles = "admin,superadmin")]
-        public IActionResult ChangeRole([FromBody] ChangeRoleViewModel model)
-        {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
+        // ChangeRole endpoint removed temporarily because it's not working. Re-add when ready.
 
-            // Get caller role
-            var callerRole = User.FindFirst(ClaimTypes.Role)?.Value;
-            if (string.IsNullOrEmpty(callerRole))
-            {
-                return Forbid();
-            }
-
-            // prevent non-superadmin from assigning superadmin
-            if (model.Role == "superadmin" && callerRole != "superadmin")
-            {
-                return Forbid();
-            }
-
-            var user = _userRepository.GetByEmail(model.Email);
-            if (user == null)
-            {
-                return NotFound(new { message = "User not found." });
-            }
-
-            user.Role = model.Role;
-            _userRepository.Update(user);
-            _unitOfWork.SaveChanges();
-
-            return Ok(new { id = user.Id, email = user.Email, role = user.Role });
-        }
     }
 }
