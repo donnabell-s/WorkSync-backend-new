@@ -100,6 +100,11 @@ public partial class WorkSyncDbContext : DbContext
                 .HasMaxLength(200);
             entity.Property(e => e.SizeLabel).HasMaxLength(50);
             entity.Property(e => e.Status).HasMaxLength(50);
+            // Configure ImageUrl column to persist image URL
+            entity.Property(e => e.ImageUrl)
+                .HasMaxLength(500)
+                .IsUnicode(false)
+                .HasColumnType("varchar(500)");
         });
 
         modelBuilder.Entity<RoomAmenity>(entity =>

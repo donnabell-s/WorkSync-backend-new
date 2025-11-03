@@ -59,17 +59,15 @@ namespace ASI.Basecode.Data.Migrations
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("UserId")
-                        .HasMaxLength(50)
-                        .IsUnicode(false)
-                        .HasColumnType("varchar(50)");
+                    b.Property<int?>("UserRefId")
+                        .HasColumnType("int");
 
                     b.HasKey("BookingId")
                         .HasName("PK__Bookings__73951AED31FDD369");
 
                     b.HasIndex("RoomId");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("UserRefId");
 
                     b.ToTable("Bookings", "ws");
                 });
@@ -93,17 +91,15 @@ namespace ASI.Basecode.Data.Migrations
                     b.Property<DateTime?>("Timestamp")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("UserId")
-                        .HasMaxLength(50)
-                        .IsUnicode(false)
-                        .HasColumnType("varchar(50)");
+                    b.Property<int?>("UserRefId")
+                        .HasColumnType("int");
 
                     b.HasKey("BookingLogId")
                         .HasName("PK__BookingL__D6D56B32605743C8");
 
                     b.HasIndex("BookingId");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("UserRefId");
 
                     b.ToTable("BookingLogs", "ws");
                 });
@@ -121,6 +117,11 @@ namespace ASI.Basecode.Data.Migrations
 
                     b.Property<DateTime?>("CreatedAt")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("ImageUrl")
+                        .HasMaxLength(500)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(500)");
 
                     b.Property<string>("Level")
                         .HasMaxLength(50)
@@ -195,17 +196,15 @@ namespace ASI.Basecode.Data.Migrations
                     b.Property<DateTime?>("Timestamp")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("UserId")
-                        .HasMaxLength(50)
-                        .IsUnicode(false)
-                        .HasColumnType("varchar(50)");
+                    b.Property<int?>("UserRefId")
+                        .HasColumnType("int");
 
                     b.HasKey("RoomLogId")
                         .HasName("PK__RoomLogs__71A264C4826A7346");
 
                     b.HasIndex("RoomId");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("UserRefId");
 
                     b.ToTable("RoomLogs", "ws");
                 });
@@ -223,25 +222,24 @@ namespace ASI.Basecode.Data.Migrations
                     b.Property<DateTime?>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("UserId")
-                        .HasMaxLength(50)
-                        .IsUnicode(false)
-                        .HasColumnType("varchar(50)");
+                    b.Property<int?>("UserRefId")
+                        .HasColumnType("int");
 
                     b.HasKey("SessionId")
                         .HasName("PK__Sessions__C9F492906CEBC5BB");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("UserRefId");
 
                     b.ToTable("Sessions", "ws");
                 });
 
             modelBuilder.Entity("ASI.Basecode.Data.Models.User", b =>
                 {
-                    b.Property<string>("UserId")
-                        .HasMaxLength(50)
-                        .IsUnicode(false)
-                        .HasColumnType("varchar(50)");
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<DateTime?>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -255,9 +253,6 @@ namespace ASI.Basecode.Data.Migrations
                     b.Property<string>("Fname")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
-
-                    b.Property<int>("Id")
-                        .HasColumnType("int");
 
                     b.Property<bool>("IsActive")
                         .ValueGeneratedOnAdd()
@@ -282,8 +277,13 @@ namespace ASI.Basecode.Data.Migrations
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
-                    b.HasKey("UserId")
-                        .HasName("PK__Users__1788CC4C933F73B0");
+                    b.Property<string>("UserId")
+                        .HasMaxLength(50)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(50)");
+
+                    b.HasKey("Id")
+                        .HasName("PK_Users_Id");
 
                     b.HasIndex(new[] { "Email" }, "UQ__Users__A9D1053413C382AE")
                         .IsUnique();
@@ -317,15 +317,13 @@ namespace ASI.Basecode.Data.Migrations
                     b.Property<int?>("ReminderTimeMinutes")
                         .HasColumnType("int");
 
-                    b.Property<string>("UserId")
-                        .HasMaxLength(50)
-                        .IsUnicode(false)
-                        .HasColumnType("varchar(50)");
+                    b.Property<int?>("UserRefId")
+                        .HasColumnType("int");
 
                     b.HasKey("PrefId")
                         .HasName("PK__UserPref__1F832A20BF4E3852");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("UserRefId");
 
                     b.ToTable("UserPreferences", "ws");
                 });
@@ -339,8 +337,8 @@ namespace ASI.Basecode.Data.Migrations
 
                     b.HasOne("ASI.Basecode.Data.Models.User", "User")
                         .WithMany("Bookings")
-                        .HasForeignKey("UserId")
-                        .HasConstraintName("FK_Bookings_Users");
+                        .HasForeignKey("UserRefId")
+                        .HasConstraintName("FK_Bookings_Users_Id");
 
                     b.Navigation("Room");
 
@@ -356,8 +354,8 @@ namespace ASI.Basecode.Data.Migrations
 
                     b.HasOne("ASI.Basecode.Data.Models.User", "User")
                         .WithMany("BookingLogs")
-                        .HasForeignKey("UserId")
-                        .HasConstraintName("FK_BookingLogs_Users");
+                        .HasForeignKey("UserRefId")
+                        .HasConstraintName("FK_BookingLogs_Users_Id");
 
                     b.Navigation("Booking");
 
@@ -384,8 +382,8 @@ namespace ASI.Basecode.Data.Migrations
 
                     b.HasOne("ASI.Basecode.Data.Models.User", "User")
                         .WithMany("RoomLogs")
-                        .HasForeignKey("UserId")
-                        .HasConstraintName("FK_RoomLogs_Users");
+                        .HasForeignKey("UserRefId")
+                        .HasConstraintName("FK_RoomLogs_Users_Id");
 
                     b.Navigation("Room");
 
@@ -396,8 +394,8 @@ namespace ASI.Basecode.Data.Migrations
                 {
                     b.HasOne("ASI.Basecode.Data.Models.User", "User")
                         .WithMany("Sessions")
-                        .HasForeignKey("UserId")
-                        .HasConstraintName("FK_Sessions_Users");
+                        .HasForeignKey("UserRefId")
+                        .HasConstraintName("FK_Sessions_Users_Id");
 
                     b.Navigation("User");
                 });
@@ -406,8 +404,8 @@ namespace ASI.Basecode.Data.Migrations
                 {
                     b.HasOne("ASI.Basecode.Data.Models.User", "User")
                         .WithMany("UserPreferences")
-                        .HasForeignKey("UserId")
-                        .HasConstraintName("FK_UserPreferences_Users");
+                        .HasForeignKey("UserRefId")
+                        .HasConstraintName("FK_UserPreferences_Users_Id");
 
                     b.Navigation("User");
                 });

@@ -50,9 +50,16 @@ BEGIN
 END
 ");
 
-            // Populate Users.Id with sequential values if any NULLs exist
+            // Populate Users.Id with sequential values only if the Id column exists, is NOT an IDENTITY, and there are NULLs
             migrationBuilder.Sql(@"
-IF EXISTS(SELECT 1 FROM [ws].[Users] WHERE Id IS NULL)
+-- Only attempt to populate if the Id column exists AND it's NOT an IDENTITY column, and there are NULLs
+IF COL_LENGTH('ws.Users','Id') IS NOT NULL
+AND EXISTS(
+    SELECT 1 FROM sys.columns sc
+    JOIN sys.objects so ON sc.object_id = so.object_id
+    WHERE so.name = 'Users' AND SCHEMA_NAME(so.schema_id) = 'ws' AND sc.name = 'Id' AND sc.is_identity = 0
+)
+AND EXISTS(SELECT 1 FROM [ws].[Users] WHERE Id IS NULL)
 BEGIN
     ;WITH cte AS (
         SELECT UserId, ROW_NUMBER() OVER (ORDER BY Email, UserId) AS rn
@@ -65,37 +72,43 @@ BEGIN
 END
 ");
 
-            // Populate new FK columns by joining on existing string UserId
+            // Populate new FK columns by joining on existing string UserId; this will set FK values where possible
             migrationBuilder.Sql(@"
 UPDATE b
 SET b.UserRefId = u.Id
 FROM [ws].[Bookings] b
-JOIN [ws].[Users] u ON b.UserId = u.UserId;
+JOIN [ws].[Users] u ON b.UserId = u.UserId
+WHERE b.UserRefId IS NULL AND u.Id IS NOT NULL;
 
 UPDATE bl
 SET bl.UserRefId = u.Id
 FROM [ws].[BookingLogs] bl
-JOIN [ws].[Users] u ON bl.UserId = u.UserId;
+JOIN [ws].[Users] u ON bl.UserId = u.UserId
+WHERE bl.UserRefId IS NULL AND u.Id IS NOT NULL;
 
 UPDATE rl
 SET rl.UserRefId = u.Id
 FROM [ws].[RoomLogs] rl
-JOIN [ws].[Users] u ON rl.UserId = u.UserId;
+JOIN [ws].[Users] u ON rl.UserId = u.UserId
+WHERE rl.UserRefId IS NULL AND u.Id IS NOT NULL;
 
 UPDATE s
 SET s.UserRefId = u.Id
 FROM [ws].[Sessions] s
-JOIN [ws].[Users] u ON s.UserId = u.UserId;
+JOIN [ws].[Users] u ON s.UserId = u.UserId
+WHERE s.UserRefId IS NULL AND u.Id IS NOT NULL;
 
 UPDATE up
 SET up.UserRefId = u.Id
 FROM [ws].[UserPreferences] up
-JOIN [ws].[Users] u ON up.UserId = u.UserId;
+JOIN [ws].[Users] u ON up.UserId = u.UserId
+WHERE up.UserRefId IS NULL AND u.Id IS NOT NULL;
 ");
 
-            // Make Users.Id NOT NULL if all populated
+            // Make Users.Id NOT NULL if all populated (only alter column nullability)
             migrationBuilder.Sql(@"
-IF NOT EXISTS(SELECT 1 FROM [ws].[Users] WHERE Id IS NULL)
+IF COL_LENGTH('ws.Users','Id') IS NOT NULL
+AND NOT EXISTS(SELECT 1 FROM [ws].[Users] WHERE Id IS NULL)
 BEGIN
     ALTER TABLE [ws].[Users] ALTER COLUMN [Id] INT NOT NULL;
 END
@@ -225,19 +238,19 @@ BEGIN
 END
 ");
 
-            // Remove Users.Id column if it exists
-            migrationBuilder.Sql(@"
-IF COL_LENGTH('ws.Users','Id') IS NOT NULL
-BEGIN
-    ALTER TABLE [ws].[Users] DROP COLUMN [Id];
-END
-");
-
             // Optionally drop the unique index created on Email
             migrationBuilder.Sql(@"
 IF EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UQ__Users__A9D1053413C382AE')
 BEGIN
     DROP INDEX [UQ__Users__A9D1053413C382AE] ON [ws].[Users];
+END
+");
+
+            // Remove Users.Id column if it exists
+            migrationBuilder.Sql(@"
+IF COL_LENGTH('ws.Users','Id') IS NOT NULL
+BEGIN
+    ALTER TABLE [ws].[Users] DROP COLUMN [Id];
 END
 ");
         }
