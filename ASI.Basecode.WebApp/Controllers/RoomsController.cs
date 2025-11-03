@@ -54,6 +54,7 @@ namespace ASI.Basecode.WebApp.Controllers
         }
 
         [HttpGet]
+        [Authorize(Roles = "Admin,SuperAdmin")]
         public async Task<IActionResult> Get(CancellationToken cancellationToken)
         {
             var items = await _roomService.GetRoomsAsync(cancellationToken);
@@ -61,6 +62,7 @@ namespace ASI.Basecode.WebApp.Controllers
         }
 
         [HttpGet("{id}")]
+        [Authorize(Roles = "Admin,SuperAdmin")]
         public async Task<IActionResult> Get(string id, CancellationToken cancellationToken)
         {
             var item = await _roomService.GetByIdAsync(id, cancellationToken);
@@ -70,7 +72,7 @@ namespace ASI.Basecode.WebApp.Controllers
 
         // Admin / SuperAdmin only endpoint to create a room. Accepts a CreateRoomRequest DTO from body.
         [HttpPost]
-        [AllowAnonymous]
+        [Authorize(Roles = "Admin,SuperAdmin")]
         public async Task<IActionResult> Post([FromBody] CreateRoomRequest request, CancellationToken cancellationToken)
         {
             if (request == null) return BadRequest();
@@ -151,6 +153,7 @@ namespace ASI.Basecode.WebApp.Controllers
         }
 
         [HttpPut("{id}")]
+        [Authorize(Roles = "Admin,SuperAdmin")]
         public async Task<IActionResult> Put(string id, [FromBody] Room model, CancellationToken cancellationToken)
         {
             if (model == null || model.RoomId != id) return BadRequest();
@@ -159,6 +162,7 @@ namespace ASI.Basecode.WebApp.Controllers
         }
 
         [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin,SuperAdmin")]
         public async Task<IActionResult> Delete(string id, CancellationToken cancellationToken)
         {
             await _roomService.DeleteAsync(id, cancellationToken);
