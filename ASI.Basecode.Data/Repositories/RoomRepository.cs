@@ -13,9 +13,10 @@ namespace ASI.Basecode.Data.Repositories
     {
         public RoomRepository(IUnitOfWork unitOfWork) : base(unitOfWork) { }
 
-        public IQueryable<Room> GetRooms() => GetDbSet<Room>();
+        // Include RoomAmenities by default so callers get amenities when querying rooms
+        public IQueryable<Room> GetRooms() => GetDbSet<Room>().Include(r => r.RoomAmenities);
 
-        public Room GetById(string roomId) => Context.Set<Room>().Find(roomId);
+        public Room GetById(string roomId) => Context.Set<Room>().Include(r => r.RoomAmenities).FirstOrDefault(r => r.RoomId == roomId);
 
         public void Add(Room entity) => GetDbSet<Room>().Add(entity);
 
@@ -25,12 +26,12 @@ namespace ASI.Basecode.Data.Repositories
 
         public async Task<List<Room>> GetRoomsAsync(CancellationToken cancellationToken = default)
         {
-            return await GetDbSet<Room>().ToListAsync(cancellationToken);
+            return await GetDbSet<Room>().Include(r => r.RoomAmenities).ToListAsync(cancellationToken);
         }
 
         public async Task<Room> GetByIdAsync(string roomId, CancellationToken cancellationToken = default)
         {
-            return await Context.Set<Room>().FindAsync(new object[] { roomId }, cancellationToken).AsTask();
+            return await Context.Set<Room>().Include(r => r.RoomAmenities).FirstOrDefaultAsync(r => r.RoomId == roomId, cancellationToken);
         }
 
         public async Task AddAsync(Room entity, CancellationToken cancellationToken = default)

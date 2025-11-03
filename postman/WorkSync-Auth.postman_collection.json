@@ -54,6 +54,29 @@
           ]
         }
       },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "// Try to parse and set token into collection variable 'token'",
+              "try {",
+              "  var json = pm.response.json();",
+              "  var t = json.token || json.access_token || json.accessToken || (json.data && (json.data.token || json.data.access_token));",
+              "  if (t) {",
+              "    pm.collectionVariables.set('token', t);",
+              "    console.log('Saved token to collection variable');",
+              "  } else {",
+              "    console.log('Token not found in response');",
+              "  }",
+              "} catch (e) {",
+              "  console.log('No JSON body or parse error:', e);",
+              "}"
+            ]
+          }
+        }
+      ],
       "response": []
     },
     {
@@ -90,6 +113,37 @@
           ]
         }
       },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "// Parse token from common response shapes and save to collection variable 'token'",
+              "try {",
+              "  var json = pm.response.json();",
+              "  var t = json.access_token || json.token || json.accessButton || (json.data && (json.data.access_token || json.data.token));",
+              "  if (t) {",
+              "    pm.collectionVariables.set('token', t);",
+              "    console.log('Saved token to collection variable');",
+              "  } else {",
+              "    // some token endpoints return form-encoded body; try to parse raw text for access_token=...",
+              "    var text = pm.response.text();",
+              "    var m = text.match(/access_token=([^&]+)/);",
+              "    if (m && m[1]) {",
+              "      pm.collectionVariables.set('token', decodeURIComponent(m[1]));",
+              "      console.log('Saved token from form-encoded response');",
+              "    } else {",
+              "      console.log('Token not found in response');",
+              "    }",
+              "  }",
+              "} catch (e) {",
+              "  console.log('No JSON body or parse error:', e);",
+              "}"
+            ]
+          }
+        }
+      ],
       "response": []
     },
     {

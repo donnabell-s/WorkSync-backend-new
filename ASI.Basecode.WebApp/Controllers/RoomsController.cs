@@ -54,25 +54,86 @@ namespace ASI.Basecode.WebApp.Controllers
         }
 
         [HttpGet]
-        [Authorize(Roles = "Admin,SuperAdmin")]
         public async Task<IActionResult> Get(CancellationToken cancellationToken)
         {
-            var items = await _roomService.GetRoomsAsync(cancellationToken);
-            return Ok(items);
+            try
+            {
+                var items = await _roomService.GetRoomsAsync(cancellationToken);
+
+                var results = items.Select(r => new
+                {
+                    r.RoomId,
+                    r.Name,
+                    r.Code,
+                    r.Seats,
+                    r.Location,
+                    r.Level,
+                    r.SizeLabel,
+                    r.Status,
+                    OperatingHours = r.OperatingHours,
+                    r.ImageUrl,
+                    r.CreatedAt,
+                    r.UpdatedAt,
+                    Amenities = r.RoomAmenities?.Select(a => a.Amenity).ToList() ?? new List<string>()
+                }).ToList();
+
+                return Ok(results);
+            }
+            catch (System.Exception ex)
+            {
+                var list = new List<string>();
+                var e = ex;
+                while (e != null)
+                {
+                    list.Add(e.Message);
+                    e = e.InnerException;
+                }
+                return StatusCode(500, new { error = "Get rooms failed", details = list });
+            }
         }
 
         [HttpGet("{id}")]
-        [Authorize(Roles = "Admin,SuperAdmin")]
         public async Task<IActionResult> Get(string id, CancellationToken cancellationToken)
         {
-            var item = await _roomService.GetByIdAsync(id, cancellationToken);
-            if (item == null) return NotFound();
-            return Ok(item);
+            try
+            {
+                var item = await _roomService.GetByIdAsync(id, cancellationToken);
+                if (item == null) return NotFound();
+
+                var result = new
+                {
+                    item.RoomId,
+                    item.Name,
+                    item.Code,
+                    item.Seats,
+                    item.Location,
+                    item.Level,
+                    item.SizeLabel,
+                    item.Status,
+                    OperatingHours = item.OperatingHours,
+                    item.ImageUrl,
+                    item.CreatedAt,
+                    item.UpdatedAt,
+                    Amenities = item.RoomAmenities?.Select(a => a.Amenity).ToList() ?? new List<string>()
+                };
+
+                return Ok(result);
+            }
+            catch (System.Exception ex)
+            {
+                var list = new List<string>();
+                var e = ex;
+                while (e != null)
+                {
+                    list.Add(e.Message);
+                    e = e.InnerException;
+                }
+                return StatusCode(500, new { error = "Get room failed", details = list });
+            }
         }
 
         // Admin / SuperAdmin only endpoint to create a room. Accepts a CreateRoomRequest DTO from body.
         [HttpPost]
-        [Authorize(Roles = "Admin,SuperAdmin")]
         public async Task<IActionResult> Post([FromBody] CreateRoomRequest request, CancellationToken cancellationToken)
         {
             if (request == null) return BadRequest();
@@ -153,20 +214,74 @@ namespace ASI.Basecode.WebApp.Controllers
         }
 
         [HttpPut("{id}")]
-        [Authorize(Roles = "Admin,SuperAdmin")]
-        public async Task<IActionResult> Put(string id, [FromBody] Room model, CancellationToken cancellationToken)
+        public async Task<IActionResult> Put(string id, [FromBody] CreateRoomRequest request, CancellationToken cancellationToken)
         {
-            if (model == null || model.RoomId != id) return BadRequest();
-            await _roomService.UpdateAsync(model, cancellationToken);
+            if (request == null) return BadRequest();
+
+            var room = await _roomService.GetByIdAsync(id, cancellationToken);
+            if (room == null) return NotFound();
+
+            // Update scalar properties
+            room.Name = request.Name ?? room.Name;
+            room.Code = request.Code ?? room.Code;
+            room.Seats = request.Seats ?? room.Seats;
+            room.Location = request.Location ?? room.Location;
+            room.Level = request.Level ?? room.Level;
+            room.SizeLabel = request.SizeLabel ?? room.SizeLabel;
+            room.Status = request.Status ?? room.Status;
+            room.OperatingHours = request.OperatingHours == null ? room.OperatingHours : JsonSerializer.Serialize(request.OperatingHours);
+            if (!string.IsNullOrWhiteSpace(request.ImageUrl)) room.ImageUrl = request.ImageUrl;
+            room.UpdatedAt = DateTime.UtcNow;
+
+            // Replace amenities: clear existing and add new
+            room.RoomAmenities = room.RoomAmenities ?? new List<RoomAmenity>();
+            room.RoomAmenities.Clear();
+            if (request.Amenities != null)
+            {
+                foreach (var a in request.Amenities.Distinct())
+                {
+                    room.RoomAmenities.Add(new RoomAmenity { RoomId = room.RoomId, Amenity = a });
+                }
+            }
+
+            try
+            {
+                await _roomService.UpdateAsync(room, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                var list = new List<string>();
+                var e = ex;
+                while (e != null)
+                {
+                    list.Add(e.Message);
+                    e = e.InnerException;
+                }
+                return StatusCode(500, new { error = "Update room failed", details = list });
+            }
+
             return NoContent();
         }
 
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Admin,SuperAdmin")]
         public async Task<IActionResult> Delete(string id, CancellationToken cancellationToken)
         {
-            await _roomService.DeleteAsync(id, cancellationToken);
-            return NoContent();
+            try
+            {
+                await _roomService.DeleteAsync(id, cancellationToken);
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                var list = new List<string>();
+                var e = ex;
+                while (e != null)
+                {
+                    list.Add(e.Message);
+                    e = e.InnerException;
+                }
+                return StatusCode(500, new { error = "Delete room failed", details = list });
+            }
         }
     }
 
