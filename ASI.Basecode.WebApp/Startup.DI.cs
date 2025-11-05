@@ -37,6 +37,12 @@ namespace ASI.Basecode.WebApp
             this._services.AddScoped<ISessionService, SessionService>();
             this._services.AddScoped<IUserPreferenceService, UserPreferenceService>();
             this._services.AddScoped<IBookingLogService, BookingLogService>();
+            this._services.AddScoped<IAccountService, AccountService>();
+            this._services.AddScoped<IPreferencesService, PreferencesService>();
+            this._services.AddScoped<IAdminService, AdminService>();
+            this._services.AddScoped<ISuperadminService, SuperadminService>();
+            this._services.AddScoped<INotificationService, NotificationService>();
+            this._services.AddScoped<IAuditLogService, AuditLogService>();
 
 
             // Repositories
@@ -46,6 +52,8 @@ namespace ASI.Basecode.WebApp
             this._services.AddScoped<IRoomRepository, RoomRepository>();
             this._services.AddScoped<ISessionRepository, SessionRepository>();
             this._services.AddScoped<IUserPreferenceRepository, UserPreferenceRepository>();
+            this._services.AddScoped<INotificationRepository, NotificationRepository>();
+            this._services.AddScoped<IAuditLogRepository, AuditLogRepository>();
 
             // Manager Class
             this._services.AddScoped<SignInManager>();
