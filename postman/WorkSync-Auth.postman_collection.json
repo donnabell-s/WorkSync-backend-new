@@ -1,0 +1,680 @@
+{
+  "info": {
+    "name": "WorkSync Auth",
+    "_postman_id": "worksync-auth-collection",
+    "description": "Postman collection to test authentication, Rooms and Bookings endpoints for WorkSync backend.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:58581",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "adminToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "roomId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "bookingId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "targetUserRefId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Account Login (JSON)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"test\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/Account/Login",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "Account",
+            "Login"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "// Try to parse and set token into collection variable 'token'",
+              "try {",
+              "  var json = pm.response.json();",
+              "  var t = json.token || json.access_token || json.accessToken || (json.data && (json.data.token || json.data.access_token));",
+              "  if (t) {",
+              "    pm.collectionVariables.set('token', t);",
+              "    console.log('Saved token to collection variable');",
+              "  } else {",
+              "    console.log('Token not found in response');",
+              "  }",
+              "} catch (e) {",
+              "  console.log('No JSON body or parse error:', e);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "Token (form) - /api/token",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/x-www-form-urlencoded"
+          }
+        ],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            {
+              "key": "username",
+              "value": "test"
+            },
+            {
+              "key": "password",
+              "value": "test"
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{base_url}}/api/token",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "token"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "// Parse token from common response shapes and save to collection variable 'token'",
+              "try {",
+              "  var json = pm.response.json();",
+              "  var t = json.access_token || json.token || json.accessButton || (json.data && (json.data.access_token || json.data.token));",
+              "  if (t) {",
+              "    pm.collectionVariables.set('token', t);",
+              "    console.log('Saved token to collection variable');",
+              "  } else {",
+              "    // some token endpoints return form-encoded body; try to parse raw text for access_token=...",
+              "    var text = pm.response.text();",
+              "    var m = text.match(/access_token=([^&]+)/);",
+              "    if (m && m[1]) {",
+              "      pm.collectionVariables.set('token', decodeURIComponent(m[1]));",
+              "      console.log('Saved token from form-encoded response');",
+              "    } else {",
+              "      console.log('Token not found in response');",
+              "    }",
+              "  }",
+              "} catch (e) {",
+              "  console.log('No JSON body or parse error:', e);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "Register (JSON)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"fullName\": \"New User\",\n  \"email\": \"newuser@example.com\",\n  \"password\": \"P@ssw0rd\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/Account/Register",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "Account",
+            "Register"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Change Role (admin)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"someUser@example.com\",\n  \"role\": \"admin\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/Account/ChangeRole",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "Account",
+            "ChangeRole"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get Rooms (protected)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/Rooms/Get",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "Rooms",
+            "Get"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get Room By Id (protected)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/Rooms/Get/{{roomId}}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "Rooms",
+            "Get",
+            "{{roomId}}"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Create Room (admin)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Conference Room A\",\n  \"code\": \"CR-101\",\n  \"location\": \"Building 1, North Wing\",\n  \"level\": \"2\",\n  \"sizeLabel\": \"Large\",\n  \"seats\": 24,\n  \"status\": \"Available\",\n  \"operatingHours\": {\n    \"weekdays\": { \"open\": \"09:00\", \"close\": \"18:00\" },\n    \"weekends\": { \"open\": \"10:00\", \"close\": \"16:00\" }\n  },\n  \"amenities\": [\n    \"Projector\",\n    \"Whiteboard\",\n    \"Wi-Fi\",\n    \"Conference table and chairs\",\n    \"Power outlets\",\n    \"Air conditioning\"\n  ],\n  \"imageUrl\": \"\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/Rooms/Post",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "Rooms",
+            "Post"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Update Room (admin)",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"roomId\": \"{{roomId}}\",\n  \"name\": \"Conference Room A (Updated)\",\n  \"code\": \"CR-101\",\n  \"location\": \"Building 1, North Wing\",\n  \"level\": \"2\",\n  \"sizeLabel\": \"Large\",\n  \"seats\": 24,\n  \"status\": \"Available\",\n  \"operatingHours\": {\n    \"weekdays\": { \"open\": \"09:00\", \"close\": \"18:00\" },\n    \"weekends\": { \"open\": \"10:00\", \"close\": \"16:00\" }\n  },\n  \"amenities\": [\n    \"Projector\",\n    \"Whiteboard\"\n  ],\n  \"imageUrl\": \"\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/Rooms/Put/{{roomId}}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "Rooms",
+            "Put",
+            "{{roomId}}"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Delete Room (admin)",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/Rooms/Delete/{{roomId}}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "Rooms",
+            "Delete",
+            "{{roomId}}"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get Bookings",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/Bookings/Get",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "Bookings",
+            "Get"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get Booking By Id",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/Bookings/Get/{{bookingId}}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "Bookings",
+            "Get",
+            "{{bookingId}}"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Create Booking (user)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"roomId\": \"{{roomId}}\",\n  \"title\": \"Team Sync\",\n  \"description\": \"Weekly team sync meeting\",\n  \"startDatetime\": \"2025-11-10T09:00:00Z\",\n  \"endDatetime\": \"2025-11-10T10:00:00Z\",\n  \"recurrence\": { \"isRecurring\": true, \"pattern\": \"weekly\", \"interval\": 1, \"daysOfWeek\": [1], \"endDate\": \"2025-12-31T00:00:00Z\" }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/Bookings/Post",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "Bookings",
+            "Post"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "try {",
+              "  var json = pm.response.json();",
+              "  var id = json.bookingId || json.BookingId || (json.booking && (json.booking.bookingId || json.booking.BookingId)) || (json.data && json.data.bookingId);",
+              "  if (id) {",
+              "    pm.collectionVariables.set('bookingId', id);",
+              "    console.log('Saved bookingId to collection variable:', id);",
+              "  } else {",
+              "    console.log('bookingId not found in response');",
+              "  }",
+              "} catch (e) {",
+              "  console.log('No JSON body or parse error:', e);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "Create Booking (admin for user)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"roomId\": \"{{roomId}}\",\n  \"title\": \"One-off Training\",\n  \"description\": \"Training for new staff\",\n  \"startDatetime\": \"2025-11-12T09:00:00Z\",\n  \"endDatetime\": \"2025-11-12T11:00:00Z\",\n  \"recurrence\": { \"isRecurring\": false },\n  \"userRefId\": {{targetUserRefId}}\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/Bookings/Post",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "Bookings",
+            "Post"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Update Booking (admin change owner)",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"roomId\": \"{{roomId}}\",\n  \"title\": \"Team Sync (Admin Updated)\",\n  \"description\": \"Admin moved this booking to another user\",\n  \"startDatetime\": \"2025-11-17T10:00:00Z\",\n  \"endDatetime\": \"2025-11-17T11:00:00Z\",\n  \"recurrence\": { \"isRecurring\": false },\n  \"userRefId\": {{targetUserRefId}}\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/Bookings/Put/{{bookingId}}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "Bookings",
+            "Put",
+            "{{bookingId}}"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Update Booking (user/admin)",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"roomId\": \"{{roomId}}\",\n  \"title\": \"Team Sync (Rescheduled)\",\n  \"description\": \"Updated meeting time\",\n  \"startDatetime\": \"2025-11-17T10:00:00Z\",\n  \"endDatetime\": \"2025-11-17T11:00:00Z\",\n  \"recurrence\": { \"isRecurring\": false }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/Bookings/Put/{{bookingId}}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "Bookings",
+            "Put",
+            "{{bookingId}}"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Delete Booking (user/admin)",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/Bookings/Delete/{{bookingId}}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "Bookings",
+            "Delete",
+            "{{bookingId}}"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Approve Booking (admin)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/Bookings/Approve/{{bookingId}}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "Bookings",
+            "Approve",
+            "{{bookingId}}"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Decline Booking (admin)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/Bookings/Decline/{{bookingId}}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "Bookings",
+            "Decline",
+            "{{bookingId}}"
+          ]
+        }
+      },
+      "response": []
+    }
+  ]
+}

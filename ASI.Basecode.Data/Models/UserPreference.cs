@@ -7,7 +7,7 @@ public partial class UserPreference
 {
     public int PrefId { get; set; }
 
-    public string UserId { get; set; }
+    public int? UserRefId { get; set; }
 
     public bool? BookingEmailConfirm { get; set; }
 

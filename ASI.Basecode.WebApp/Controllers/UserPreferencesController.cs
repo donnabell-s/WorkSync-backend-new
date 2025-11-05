@@ -31,7 +31,17 @@ namespace ASI.Basecode.WebApp.Controllers
         [HttpGet("user/{userId}")]
         public async Task<IActionResult> GetByUser(string userId, CancellationToken cancellationToken)
         {
-            var items = await _prefService.GetByUserAsync(userId, cancellationToken);
+            int parsedUserId;
+            try
+            {
+                parsedUserId = int.Parse(userId);
+            }
+            catch
+            {
+                return BadRequest(new { message = "Invalid user id." });
+            }
+
+            var items = await _prefService.GetByUserAsync(parsedUserId, cancellationToken);
             return Ok(items);
         }
 

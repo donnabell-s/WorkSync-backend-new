@@ -20,5 +20,6 @@ namespace ASI.Basecode.Services.Interfaces
         Task CreateAsync(Booking booking, CancellationToken cancellationToken = default);
         Task UpdateAsync(Booking booking, CancellationToken cancellationToken = default);
         Task DeleteAsync(int bookingId, CancellationToken cancellationToken = default);
+        Task<(bool IsValid, string Message)> ValidateBookingAsync(string roomId, System.DateTime start, System.DateTime end, string recurrenceJson = null, int? excludeBookingId = null, CancellationToken cancellationToken = default);
     }
 }

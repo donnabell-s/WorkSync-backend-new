@@ -51,17 +51,16 @@ public partial class WorkSyncDbContext : DbContext
                 .IsUnicode(false);
             entity.Property(e => e.Status).HasMaxLength(50);
             entity.Property(e => e.Title).HasMaxLength(200);
-            entity.Property(e => e.UserId)
-                .HasMaxLength(50)
-                .IsUnicode(false);
+            // UserRefId is the numeric FK to Users.Id
+            entity.Property<int?>("UserRefId");
 
             entity.HasOne(d => d.Room).WithMany(p => p.Bookings)
                 .HasForeignKey(d => d.RoomId)
                 .HasConstraintName("FK_Bookings_Rooms");
 
             entity.HasOne(d => d.User).WithMany(p => p.Bookings)
-                .HasForeignKey(d => d.UserId)
-                .HasConstraintName("FK_Bookings_Users");
+                .HasForeignKey("UserRefId")
+                .HasConstraintName("FK_Bookings_Users_Id");
         });
 
         modelBuilder.Entity<BookingLog>(entity =>
@@ -73,17 +72,15 @@ public partial class WorkSyncDbContext : DbContext
             entity.Property(e => e.BookingLogId).ValueGeneratedNever();
             entity.Property(e => e.CurrentStatus).HasMaxLength(100);
             entity.Property(e => e.EventType).HasMaxLength(100);
-            entity.Property(e => e.UserId)
-                .HasMaxLength(50)
-                .IsUnicode(false);
+            entity.Property<int?>("UserRefId");
 
             entity.HasOne(d => d.Booking).WithMany(p => p.BookingLogs)
                 .HasForeignKey(d => d.BookingId)
                 .HasConstraintName("FK_BookingLogs_Bookings");
 
             entity.HasOne(d => d.User).WithMany(p => p.BookingLogs)
-                .HasForeignKey(d => d.UserId)
-                .HasConstraintName("FK_BookingLogs_Users");
+                .HasForeignKey("UserRefId")
+                .HasConstraintName("FK_BookingLogs_Users_Id");
         });
 
         modelBuilder.Entity<Room>(entity =>
@@ -103,6 +100,11 @@ public partial class WorkSyncDbContext : DbContext
                 .HasMaxLength(200);
             entity.Property(e => e.SizeLabel).HasMaxLength(50);
             entity.Property(e => e.Status).HasMaxLength(50);
+            // Configure ImageUrl column to persist image URL
+            entity.Property(e => e.ImageUrl)
+                .HasMaxLength(500)
+                .IsUnicode(false)
+                .HasColumnType("varchar(500)");
         });
 
         modelBuilder.Entity<RoomAmenity>(entity =>
@@ -134,17 +136,15 @@ public partial class WorkSyncDbContext : DbContext
             entity.Property(e => e.RoomId)
                 .HasMaxLength(50)
                 .IsUnicode(false);
-            entity.Property(e => e.UserId)
-                .HasMaxLength(50)
-                .IsUnicode(false);
+            entity.Property<int?>("UserRefId");
 
             entity.HasOne(d => d.Room).WithMany(p => p.RoomLogs)
                 .HasForeignKey(d => d.RoomId)
                 .HasConstraintName("FK_RoomLogs_Rooms");
 
             entity.HasOne(d => d.User).WithMany(p => p.RoomLogs)
-                .HasForeignKey(d => d.UserId)
-                .HasConstraintName("FK_RoomLogs_Users");
+                .HasForeignKey("UserRefId")
+                .HasConstraintName("FK_RoomLogs_Users_Id");
         });
 
         modelBuilder.Entity<Session>(entity =>
@@ -156,18 +156,19 @@ public partial class WorkSyncDbContext : DbContext
             entity.Property(e => e.SessionId)
                 .HasMaxLength(50)
                 .IsUnicode(false);
-            entity.Property(e => e.UserId)
-                .HasMaxLength(50)
-                .IsUnicode(false);
+            entity.Property<int?>("UserRefId");
 
             entity.HasOne(d => d.User).WithMany(p => p.Sessions)
-                .HasForeignKey(d => d.UserId)
-                .HasConstraintName("FK_Sessions_Users");
+                .HasForeignKey("UserRefId")
+                .HasConstraintName("FK_Sessions_Users_Id");
         });
 
         modelBuilder.Entity<User>(entity =>
         {
-            entity.HasKey(e => e.UserId).HasName("PK__Users__1788CC4C933F73B0");
+            // Use numeric Id as primary key
+            entity.HasKey(e => e.Id).HasName("PK_Users_Id");
+
+            entity.Property(e => e.Id).ValueGeneratedOnAdd();
 
             entity.ToTable("Users", "ws");
 
@@ -198,13 +199,11 @@ public partial class WorkSyncDbContext : DbContext
 
             entity.ToTable("UserPreferences", "ws");
 
-            entity.Property(e => e.UserId)
-                .HasMaxLength(50)
-                .IsUnicode(false);
+            entity.Property<int?>("UserRefId");
 
             entity.HasOne(d => d.User).WithMany(p => p.UserPreferences)
-                .HasForeignKey(d => d.UserId)
-                .HasConstraintName("FK_UserPreferences_Users");
+                .HasForeignKey("UserRefId")
+                .HasConstraintName("FK_UserPreferences_Users_Id");
         });
 
         OnModelCreatingPartial(modelBuilder);

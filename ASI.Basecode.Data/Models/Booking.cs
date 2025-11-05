@@ -9,7 +9,8 @@ public partial class Booking
 
     public string RoomId { get; set; }
 
-    public string UserId { get; set; }
+    // switched to numeric FK column
+    public int? UserRefId { get; set; }
 
     public string Title { get; set; }
 

@@ -9,7 +9,7 @@ public partial class Session
 
     public bool? Auth { get; set; }
 
-    public string UserId { get; set; }
+    public int? UserRefId { get; set; }
 
     public DateTime? CreatedAt { get; set; }
 

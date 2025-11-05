@@ -4,6 +4,7 @@ using ASI.Basecode.Services.Manager;
 using ASI.Basecode.WebApp.Authentication;
 using ASI.Basecode.WebApp.Extensions.Configuration;
 using ASI.Basecode.WebApp.Models;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http.Features;
@@ -15,6 +16,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System;
+using System.IdentityModel.Tokens.Jwt;
 using System.IO;
 using System.Text;
 
@@ -56,6 +58,10 @@ namespace ASI.Basecode.WebApp
             var token = this.Configuration.GetTokenAuthentication();
             this._signingKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(token.SecretKey));
             this._tokenProviderOptions = TokenProviderOptionsFactory.Create(token, this._signingKey);
+
+            // Ensure JWT handler does not remap inbound claim types so role claim names are preserved
+            JwtSecurityTokenHandler.DefaultMapInboundClaims = false;
+
             this._tokenValidationParameters = new TokenValidationParameters
             {
                 ValidateIssuerSigningKey = true,
@@ -65,7 +71,9 @@ namespace ASI.Basecode.WebApp
                 ValidateAudience = true,
                 ValidAudience = token.Audience,
                 ValidateLifetime = true,
-                ClockSkew = TimeSpan.Zero
+                ClockSkew = TimeSpan.Zero,
+                // Map the role claim type used in tokens (commonly 'role') so Authorize(Roles=..) recognizes it
+                RoleClaimType = "role"
             };
 
             PasswordManager.SetUp(this.Configuration.GetSection("TokenAuthentication"));
@@ -95,6 +103,18 @@ namespace ASI.Basecode.WebApp
             //Configuration
             services.Configure<TokenAuthentication>(Configuration.GetSection("TokenAuthentication"));
 
+            // CORS - allow React frontend
+            services.AddCors(options =>
+            {
+                options.AddPolicy("AllowReactApp", builder =>
+                {
+                    builder.WithOrigins("http://localhost:3000", "http://localhost:5173")
+                           .AllowAnyHeader()
+                           .AllowAnyMethod()
+                           .AllowCredentials();
+                });
+            });
+
             // Session
             services.AddSession(options =>
             {
@@ -118,6 +138,8 @@ namespace ASI.Basecode.WebApp
             services.AddSingleton<IFileProvider>(
                 new PhysicalFileProvider(
                     Path.Combine(Directory.GetCurrentDirectory(), "wwwroot")));
+
+            this._services.AddSingleton<IClaimsTransformation, ASI.Basecode.WebApp.Authentication.RoleClaimsTransformer>();
         }
 
         /// <summary>

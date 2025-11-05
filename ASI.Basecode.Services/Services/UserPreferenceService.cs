@@ -19,7 +19,7 @@ namespace ASI.Basecode.Services.Services
             _unitOfWork = unitOfWork;
         }
 
-        public IQueryable<UserPreference> GetByUser(string userId) => _prefRepository.GetByUser(userId);
+        public IQueryable<UserPreference> GetByUser(int userId) => _prefRepository.GetByUser(userId);
 
         public UserPreference GetById(int prefId) => _prefRepository.GetById(prefId);
 
@@ -43,9 +43,15 @@ namespace ASI.Basecode.Services.Services
             _unitOfWork.SaveChanges();
         }
 
-        public async Task<List<UserPreference>> GetByUserAsync(string userId, CancellationToken cancellationToken = default)
+        public async Task<List<UserPreference>> GetByUserAsync(int userId, CancellationToken cancellationToken = default)
         {
             return await _prefRepository.GetByUserAsync(userId, cancellationToken);
+        }
+
+        public async Task<List<UserPreference>> GetByUserAsync(string userId, CancellationToken cancellationToken = default)
+        {
+            if (!int.TryParse(userId, out var parsed)) return new List<UserPreference>();
+            return await _prefRepository.GetByUserAsync(parsed, cancellationToken);
         }
 
         public async Task<UserPreference> GetByIdAsync(int prefId, CancellationToken cancellationToken = default)
