@@ -53,6 +53,8 @@ namespace ASI.Basecode.WebApp.Controllers
             public DateTime EndDatetime { get; set; }
             // Accept arbitrary JSON for recurrence to avoid model binder converting to string
             public JsonElement Recurrence { get; set; }
+            // Optional: target user reference id for which the booking is being created (admins can set)
+            public int? UserRefId { get; set; }
         }
 
         public class RoomOperatingHoursDto
@@ -76,9 +78,17 @@ namespace ASI.Basecode.WebApp.Controllers
             var idClaim = user.Claims.FirstOrDefault(c => c.Type.Equals("UserRefId", StringComparison.OrdinalIgnoreCase)
                                                         || c.Type.Equals("UserId", StringComparison.OrdinalIgnoreCase)
                                                         || c.Type.Equals(ClaimTypes.NameIdentifier, StringComparison.OrdinalIgnoreCase)
-                                                        || c.Type.Equals("sub", StringComparison.OrdinalIgnoreCase));
-            if (idClaim == null) return null;
-            if (int.TryParse(idClaim.Value, out var id)) return id;
+                                                        || c.Type.Equals("sub", StringComparison.OrdinalIgnoreCase)
+                                                        || c.Type.Equals("id", StringComparison.OrdinalIgnoreCase)
+                                                        || c.Type.Equals("Id", StringComparison.OrdinalIgnoreCase));
+            if (idClaim != null && int.TryParse(idClaim.Value, out var idFromClaim)) return idFromClaim;
+
+            // Fallback: find first claim with an integer value
+            foreach (var c in user.Claims)
+            {
+                if (int.TryParse(c.Value, out var val)) return val;
+            }
+
             return null;
         }
 
@@ -321,7 +331,20 @@ namespace ASI.Basecode.WebApp.Controllers
             };
 
             var userRefId = GetCurrentUserRefId();
-            if (userRefId != null) booking.UserRefId = userRefId;
+            var isAdmin = HttpContext.User?.IsInRole("Admin") == true || HttpContext.User?.IsInRole("SuperAdmin") == true;
+
+            if (isAdmin)
+            {
+                // Admins/SuperAdmins can set the booking for another user by providing UserRefId; otherwise default to their own id if available
+                if (request.UserRefId.HasValue) booking.UserRefId = request.UserRefId.Value;
+                else if (userRefId != null) booking.UserRefId = userRefId;
+            }
+            else
+            {
+                // Non-admin users always have booking assigned to themselves
+                if (userRefId == null) return Forbid();
+                booking.UserRefId = userRefId;
+            }
 
             await _bookingService.CreateAsync(booking, cancellationToken);
 
@@ -422,6 +445,12 @@ namespace ASI.Basecode.WebApp.Controllers
             booking.Recurrence = (request.Recurrence.ValueKind == JsonValueKind.Undefined || request.Recurrence.ValueKind == JsonValueKind.Null) ? null : JsonSerializer.Serialize(request.Recurrence);
             booking.UpdatedAt = DateTime.UtcNow;
 
+            // allow admins to change the owner of the booking via UserRefId in request
+            if (isAdmin && request.UserRefId.HasValue)
+            {
+                booking.UserRefId = request.UserRefId.Value;
+            }
+
             await _bookingService.UpdateAsync(booking, cancellationToken);
 
             return NoContent();
@@ -447,8 +476,8 @@ namespace ASI.Basecode.WebApp.Controllers
         }
 
         // Admin endpoints
-        [HttpPost("Approve/{id}")]
-        [Authorize(Roles = "Admin,SuperAdmin")]
+        [HttpPost("{id}")]
+        [Authorize(Policy = "RequireAdmin")]
         public async Task<IActionResult> Approve(int id, CancellationToken cancellationToken)
         {
             var booking = await _bookingService.GetByIdAsync(id, cancellationToken);
@@ -459,8 +488,8 @@ namespace ASI.Basecode.WebApp.Controllers
             return NoContent();
         }
 
-        [HttpPost("Decline/{id}")]
-        [Authorize(Roles = "Admin,SuperAdmin")]
+        [HttpPost("{id}")]
+        [Authorize(Policy = "RequireAdmin")]
         public async Task<IActionResult> Decline(int id, CancellationToken cancellationToken)
         {
             var booking = await _bookingService.GetByIdAsync(id, cancellationToken);

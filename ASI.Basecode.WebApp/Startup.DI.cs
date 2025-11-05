@@ -29,6 +29,9 @@ namespace ASI.Basecode.WebApp
             this._services.TryAddSingleton<TokenValidationParametersFactory>();
             this._services.AddScoped<IUnitOfWork, UnitOfWork>();
 
+            // Register role claims transformer to normalize role claims
+            this._services.TryAddSingleton<Microsoft.AspNetCore.Authentication.IClaimsTransformation, RoleClaimsTransformer>();
+
             // Services
             this._services.TryAddSingleton<TokenValidationParametersFactory>();
             this._services.AddScoped<IUserService, UserService>();

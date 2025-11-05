@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Authentication;
 namespace ASI.Basecode.WebApp.Authentication
 {
     /// <summary>
-    /// Normalizes incoming role claim values to TitleCase and adds them as ClaimTypes.Role so Authorize(Roles=...) works consistently.
+    /// Normalizes incoming role claim values to canonical role names and adds them as ClaimTypes.Role so Authorize(Roles=...) works consistently.
     /// This handles tokens that emit roles as "role", "roles", or the schema urn claim types and with different casing.
     /// </summary>
     public class RoleClaimsTransformer : IClaimsTransformation
@@ -30,17 +30,39 @@ namespace ASI.Basecode.WebApp.Authentication
             foreach (var rc in roleClaims)
             {
                 if (string.IsNullOrWhiteSpace(rc.Value)) continue;
-                // Normalize to Title Case (e.g., "superadmin" -> "Superadmin" -> then capitalize properly to SuperAdmin)
+                // Normalize to Title Case parts (e.g., "super-admin" -> ["Super","Admin"]) and join
                 var lower = rc.Value.ToLowerInvariant();
-                // Handle common compound names like superadmin -> SuperAdmin
-                var parts = lower.Split(new[] { ' ', '-', '_' }, StringSplitOptions.RemoveEmptyEntries);
-                for (int i = 0; i < parts.Length; i++)
-                {
-                    parts[i] = CultureInfo.InvariantCulture.TextInfo.ToTitleCase(parts[i]);
-                }
+                var parts = lower.Split(new[] { ' ', '-', '_' }, StringSplitOptions.RemoveEmptyEntries)
+                                 .Select(p => CultureInfo.InvariantCulture.TextInfo.ToTitleCase(p))
+                                 .ToArray();
+
                 var normalized = string.Join("", parts);
 
+                // Map known special cases to canonical role names
+                if (string.Equals(normalized, "Superadmin", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(lower, "superadmin", StringComparison.OrdinalIgnoreCase))
+                {
+                    normalized = "SuperAdmin"; // canonical format used in Authorize attributes
+                }
+                else if (string.Equals(normalized, "Superuser", StringComparison.OrdinalIgnoreCase) ||
+                         string.Equals(lower, "super-user", StringComparison.OrdinalIgnoreCase))
+                {
+                    normalized = "SuperAdmin";
+                }
+                // Other common normalization: allow 'admin' as 'Admin'
+                else if (string.Equals(normalized, "Admin", StringComparison.OrdinalIgnoreCase) || string.Equals(lower, "admin", StringComparison.OrdinalIgnoreCase))
+                {
+                    normalized = "Admin";
+                }
+
+                // Add normalized role claim
                 transformIdentity.AddClaim(new Claim(ClaimTypes.Role, normalized));
+
+                // Also add the original role value as a ClaimTypes.Role to maximize compatibility
+                if (!string.Equals(rc.Value, normalized, StringComparison.Ordinal))
+                {
+                    transformIdentity.AddClaim(new Claim(ClaimTypes.Role, rc.Value));
+                }
             }
 
             principal.AddIdentity(transformIdentity);

@@ -109,9 +109,11 @@ namespace ASI.Basecode.WebApp.Authentication
 
             var claims = new List<Claim>()
             {
-                new Claim(ClaimTypes.NameIdentifier, user.UserId ?? string.Empty, ClaimValueTypes.String, Const.Issuer),
+                // Use numeric DB Id as the NameIdentifier so middleware and controllers can locate numeric user id easily
+                new Claim(ClaimTypes.NameIdentifier, user?.Id.ToString() ?? string.Empty, ClaimValueTypes.Integer, Const.Issuer),
                 new Claim(ClaimTypes.Name, displayName, ClaimValueTypes.String, Const.Issuer),
 
+                // Preserve the original textual UserId (username/email) in a separate claim
                 new Claim("UserId", user.UserId ?? string.Empty, ClaimValueTypes.String, Const.Issuer),
                 new Claim("UserName", displayName, ClaimValueTypes.String, Const.Issuer),
 
@@ -119,6 +121,13 @@ namespace ASI.Basecode.WebApp.Authentication
                 new Claim(ClaimTypes.Role, user?.Role ?? "user", ClaimValueTypes.String, Const.Issuer),
                 new Claim("role", user?.Role ?? "user", ClaimValueTypes.String, Const.Issuer),
             };
+
+            // Add numeric UserRefId claim if available (this is the DB numeric Id)
+            if (user?.Id != null)
+            {
+                claims.Add(new Claim("UserRefId", user.Id.ToString(), ClaimValueTypes.Integer, Const.Issuer));
+            }
+
             return new ClaimsIdentity(claims, Const.AuthenticationScheme);
         }
 

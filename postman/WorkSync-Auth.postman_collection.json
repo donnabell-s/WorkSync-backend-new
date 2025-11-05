@@ -17,12 +17,22 @@
       "type": "string"
     },
     {
+      "key": "adminToken",
+      "value": "",
+      "type": "string"
+    },
+    {
       "key": "roomId",
       "value": "",
       "type": "string"
     },
     {
       "key": "bookingId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "targetUserRefId",
       "value": "",
       "type": "string"
     }
@@ -476,6 +486,81 @@
           }
         }
       ],
+      "response": []
+    },
+    {
+      "name": "Create Booking (admin for user)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"roomId\": \"{{roomId}}\",\n  \"title\": \"One-off Training\",\n  \"description\": \"Training for new staff\",\n  \"startDatetime\": \"2025-11-12T09:00:00Z\",\n  \"endDatetime\": \"2025-11-12T11:00:00Z\",\n  \"recurrence\": { \"isRecurring\": false },\n  \"userRefId\": {{targetUserRefId}}\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/Bookings/Post",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "Bookings",
+            "Post"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Update Booking (admin change owner)",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"roomId\": \"{{roomId}}\",\n  \"title\": \"Team Sync (Admin Updated)\",\n  \"description\": \"Admin moved this booking to another user\",\n  \"startDatetime\": \"2025-11-17T10:00:00Z\",\n  \"endDatetime\": \"2025-11-17T11:00:00Z\",\n  \"recurrence\": { \"isRecurring\": false },\n  \"userRefId\": {{targetUserRefId}}\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/Bookings/Put/{{bookingId}}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "Bookings",
+            "Put",
+            "{{bookingId}}"
+          ]
+        }
+      },
       "response": []
     },
     {

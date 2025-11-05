@@ -59,6 +59,12 @@ namespace ASI.Basecode.WebApp
                 {
                     policy.RequireAuthenticatedUser();
                 });
+
+                // Admin policy that accepts either Admin or SuperAdmin roles
+                options.AddPolicy("RequireAdmin", policy =>
+                {
+                    policy.RequireRole("Admin", "SuperAdmin");
+                });
             });
 
             this._services.AddMvc(options =>
