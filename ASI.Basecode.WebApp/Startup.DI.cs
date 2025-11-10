@@ -40,6 +40,7 @@ namespace ASI.Basecode.WebApp
             this._services.AddScoped<ISessionService, SessionService>();
             this._services.AddScoped<IUserPreferenceService, UserPreferenceService>();
             this._services.AddScoped<IBookingLogService, BookingLogService>();
+            this._services.AddScoped<IUserAdminService, UserAdminService>();
 
 
             // Repositories
