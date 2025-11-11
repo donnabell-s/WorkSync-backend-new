@@ -90,13 +90,11 @@ namespace ASI.Basecode.WebApp.Authentication
         /// <returns>Instance of ClaimsIdentity</returns>
         public ClaimsIdentity CreateClaimsIdentity(User user)
         {
-            var token = _configuration.GetTokenAuthentication();
-
             // Build a safe display name: prefer first+last name, fallback to email, then userId
             var displayName = string.Empty;
-            if (!string.IsNullOrWhiteSpace(user?.Fname) || !string.IsNullOrWhiteSpace(user?.Lname))
+            if (!string.IsNullOrWhiteSpace(user?.FirstName) || !string.IsNullOrWhiteSpace(user?.LastName))
             {
-                displayName = $"{user?.Fname?.Trim()} {user?.Lname?.Trim()}".Trim();
+                displayName = $"{user?.FirstName?.Trim()} {user?.LastName?.Trim()}".Trim();
             }
             else if (!string.IsNullOrWhiteSpace(user?.Email))
             {
