@@ -185,9 +185,9 @@ public partial class WorkSyncDbContext : DbContext
                 .IsRequired()
                 .HasMaxLength(255)
                 .IsUnicode(false);
-            // Map FirstName/LastName to DB columns
-            entity.Property(e => e.FirstName).HasMaxLength(100).HasColumnName("FirstName");
-            entity.Property(e => e.LastName).HasMaxLength(100).HasColumnName("LastName");
+            // Map FirstName/LastName properties to existing database columns Fname/Lname for compatibility
+            entity.Property(e => e.FirstName).HasMaxLength(100).HasColumnName("Fname");
+            entity.Property(e => e.LastName).HasMaxLength(100).HasColumnName("Lname");
             entity.Property(e => e.IsActive).HasDefaultValue(true);
             entity.Property(e => e.PasswordHash)
                 .IsRequired()
