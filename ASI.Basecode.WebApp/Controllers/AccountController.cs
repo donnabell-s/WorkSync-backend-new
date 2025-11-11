@@ -200,7 +200,10 @@ namespace ASI.Basecode.WebApp.Controllers
         public IActionResult GetAdmins()
         {
             var admins = _userRepository.GetUsers()
-                .Where(u => u.Role != null && (u.Role.Equals("Admin", StringComparison.OrdinalIgnoreCase) || u.Role.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase)))
+                .Where(u => u.Role != null && (
+                    u.Role.ToUpper() == "ADMIN" ||
+                    u.Role.ToUpper() == "SUPERADMIN"
+                ))
                 .Select(u => new
                 {
                     u.Id,
