@@ -55,6 +55,8 @@ namespace ASI.Basecode.WebApp.Controllers
             public JsonElement Recurrence { get; set; }
             // Optional: target user reference id for which the booking is being created (admins can set)
             public int? UserRefId { get; set; }
+            // Optional: expected number of attendees (integer)
+            public int? ExpectedAttendees { get; set; }
         }
 
         public class RoomOperatingHoursDto
@@ -197,6 +199,7 @@ namespace ASI.Basecode.WebApp.Controllers
                 b.EndDatetime,
                 b.Recurrence,
                 b.Status,
+                b.ExpectedAttendees,
                 b.CreatedAt,
                 b.UpdatedAt,
                 BookingLogs = b.BookingLogs?.Select(bl => new { bl.BookingLogId, bl.EventType, bl.Timestamp }).ToList(),
@@ -235,6 +238,7 @@ namespace ASI.Basecode.WebApp.Controllers
                 item.EndDatetime,
                 item.Recurrence,
                 item.Status,
+                item.ExpectedAttendees,
                 item.CreatedAt,
                 item.UpdatedAt,
                 BookingLogs = item.BookingLogs?.Select(bl => new { bl.BookingLogId, bl.EventType, bl.Timestamp }).ToList(),
@@ -327,7 +331,8 @@ namespace ASI.Basecode.WebApp.Controllers
                 Recurrence = (request.Recurrence.ValueKind == JsonValueKind.Undefined || request.Recurrence.ValueKind == JsonValueKind.Null) ? null : JsonSerializer.Serialize(request.Recurrence),
                 Status = "Pending",
                 CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                UpdatedAt = DateTime.UtcNow,
+                ExpectedAttendees = request.ExpectedAttendees
             };
 
             var userRefId = GetCurrentUserRefId();
@@ -360,6 +365,7 @@ namespace ASI.Basecode.WebApp.Controllers
                 booking.EndDatetime,
                 booking.Recurrence,
                 booking.Status,
+                booking.ExpectedAttendees,
                 booking.CreatedAt,
                 booking.UpdatedAt
             };
@@ -444,6 +450,7 @@ namespace ASI.Basecode.WebApp.Controllers
             booking.EndDatetime = request.EndDatetime;
             booking.Recurrence = (request.Recurrence.ValueKind == JsonValueKind.Undefined || request.Recurrence.ValueKind == JsonValueKind.Null) ? null : JsonSerializer.Serialize(request.Recurrence);
             booking.UpdatedAt = DateTime.UtcNow;
+            booking.ExpectedAttendees = request.ExpectedAttendees;
 
             // allow admins to change the owner of the booking via UserRefId in request
             if (isAdmin && request.UserRefId.HasValue)

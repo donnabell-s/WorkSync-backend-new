@@ -675,6 +675,65 @@
         }
       },
       "response": []
+    },
+    {
+      "name": "Create Booking (user with expectedAttendees)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"roomId\": \"{{roomId}}\",\n  \"title\": \"Project Kickoff\",\n  \"description\": \"Discuss project objectives and expectations\",\n  \"startDatetime\": \"2025-11-15T09:00:00Z\",\n  \"endDatetime\": \"2025-11-15T10:00:00Z\",\n  \"recurrence\": { \"isRecurring\": false },\n  \"expectedAttendees\": 8\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/Bookings/Post",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "Bookings",
+            "Post"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "try {",
+              "  var json = pm.response.json();",
+              "  var id = json.bookingId || json.BookingId || (json.booking && (json.booking.bookingId || json.booking.BookingId)) || (json.data && json.data.bookingId);",
+              "  if (id) {",
+              "    pm.collectionVariables.set('bookingId', id);",
+              "    console.log('Saved bookingId to collection variable:', id);",
+              "  } else {",
+              "    console.log('bookingId not found in response');",
+              "  }",
+              "} catch (e) {",
+              "  console.log('No JSON body or parse error:', e);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "response": []
     }
   ]
 }
