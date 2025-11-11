@@ -24,6 +24,9 @@ public partial class Booking
 
     public string Status { get; set; }
 
+    // Expected number of attendees for the booking (optional)
+    public int? ExpectedAttendees { get; set; }
+
     public DateTime? CreatedAt { get; set; }
 
     public DateTime? UpdatedAt { get; set; }

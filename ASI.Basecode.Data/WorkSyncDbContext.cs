@@ -51,6 +51,10 @@ public partial class WorkSyncDbContext : DbContext
                 .IsUnicode(false);
             entity.Property(e => e.Status).HasMaxLength(50);
             entity.Property(e => e.Title).HasMaxLength(200);
+
+            // ExpectedAttendees column mapping
+            entity.Property<int?>("ExpectedAttendees");
+
             // UserRefId is the numeric FK to Users.Id
             entity.Property<int?>("UserRefId");
 
