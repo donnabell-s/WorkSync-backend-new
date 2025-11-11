@@ -14,9 +14,10 @@ public partial class User
 
     public string PasswordHash { get; set; }
 
-    public string Fname { get; set; }
+    // Use explicit FirstName/LastName properties instead of Fname/Lname
+    public string FirstName { get; set; }
 
-    public string Lname { get; set; }
+    public string LastName { get; set; }
 
     public string Role { get; set; }
 

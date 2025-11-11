@@ -5,9 +5,13 @@ namespace ASI.Basecode.WebApp.Models
 {
     public class RegisterViewModel
     {
-        [JsonPropertyName("fullName")]
+        [JsonPropertyName("firstName")]
         [Required]
-        public string FullName { get; set; }
+        public string FirstName { get; set; }
+
+        [JsonPropertyName("lastName")]
+        [Required]
+        public string LastName { get; set; }
 
         [JsonPropertyName("email")]
         [EmailAddress]
