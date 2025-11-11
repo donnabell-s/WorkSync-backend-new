@@ -19,39 +19,11 @@ namespace ASI.Basecode.Services.Services
             _unitOfWork = unitOfWork;
         }
 
-        public IQueryable<UserPreference> GetByUser(int userId) => _prefRepository.GetByUser(userId);
+        public IQueryable<UserPreference> QueryByUserId(int userId) => _prefRepository.GetByUser(userId);
 
-        public UserPreference GetById(int prefId) => _prefRepository.GetById(prefId);
-
-        public void Create(UserPreference pref)
-        {
-            _prefRepository.Add(pref);
-            _unitOfWork.SaveChanges();
-        }
-
-        public void Update(UserPreference pref)
-        {
-            _prefRepository.Update(pref);
-            _unitOfWork.SaveChanges();
-        }
-
-        public void Delete(int prefId)
-        {
-            var entity = _prefRepository.GetById(prefId);
-            if (entity == null) return;
-            _prefRepository.Delete(entity);
-            _unitOfWork.SaveChanges();
-        }
-
-        public async Task<List<UserPreference>> GetByUserAsync(int userId, CancellationToken cancellationToken = default)
+        public async Task<List<UserPreference>> GetByUserIdAsync(int userId, CancellationToken cancellationToken = default)
         {
             return await _prefRepository.GetByUserAsync(userId, cancellationToken);
-        }
-
-        public async Task<List<UserPreference>> GetByUserAsync(string userId, CancellationToken cancellationToken = default)
-        {
-            if (!int.TryParse(userId, out var parsed)) return new List<UserPreference>();
-            return await _prefRepository.GetByUserAsync(parsed, cancellationToken);
         }
 
         public async Task<UserPreference> GetByIdAsync(int prefId, CancellationToken cancellationToken = default)

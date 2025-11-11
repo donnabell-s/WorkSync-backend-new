@@ -41,7 +41,7 @@ namespace ASI.Basecode.WebApp.Controllers
                 return BadRequest(new { message = "Invalid user id." });
             }
 
-            var items = await _prefService.GetByUserAsync(parsedUserId, cancellationToken);
+            var items = await _prefService.GetByUserIdAsync(parsedUserId, cancellationToken);
             return Ok(items);
         }
 
