@@ -734,6 +734,176 @@
         }
       ],
       "response": []
+    },
+    {
+      "name": "Get Users (admin)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/Account/GetUsers",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "Account",
+            "GetUsers"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get Admins (superadmin)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/Account/GetAdmins",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "Account",
+            "GetAdmins"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Create User (admin)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"firstName\": \"Test\",\n  \"lastName\": \"User\",\n  \"email\": \"test.user@example.com\",\n  \"password\": \"P@ssw0rd\",\n  \"role\": \"user\",\n  \"isActive\": true\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/Account/CreateUser",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "Account",
+            "CreateUser"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "try {",
+              "  var json = pm.response.json();",
+              "  var id = json.id || (json.data && json.data.id) || (json.user && json.user.id);",
+              "  if (id) {",
+              "    pm.collectionVariables.set('targetUserRefId', id);",
+              "    console.log('Saved created user id to collection variable targetUserRefId:', id);",
+              "  } else {",
+              "    console.log('User id not found in response');",
+              "  }",
+              "} catch (e) {",
+              "  console.log('No JSON body or parse error:', e);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "Update User (admin)",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"firstName\": \"Updated\",\n  \"lastName\": \"User\",\n  \"email\": \"updated.user@example.com\",\n  \"role\": \"user\",\n  \"isActive\": true\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/api/Account/UpdateUser/{{targetUserRefId}}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "Account",
+            "UpdateUser",
+            "{{targetUserRefId}}"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Delete User (admin)",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{adminToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/api/Account/DeleteUser/{{targetUserRefId}}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "api",
+            "Account",
+            "DeleteUser",
+            "{{targetUserRefId}}"
+          ]
+        }
+      },
+      "response": []
     }
   ]
 }
