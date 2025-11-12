@@ -139,8 +139,6 @@ namespace ASI.Basecode.WebApp.Controllers
 
             var newUser = new User
             {
-                // keep UserId as username placeholder (set to email)
-                UserId = model.Email,
                 Email = model.Email,
                 FirstName = model.FirstName ?? string.Empty,
                 LastName = model.LastName ?? string.Empty,
@@ -179,7 +177,6 @@ namespace ASI.Basecode.WebApp.Controllers
                 .Select(u => new
                 {
                     u.Id,
-                    u.UserId,
                     u.Email,
                     FirstName = u.FirstName,
                     LastName = u.LastName,
@@ -207,7 +204,6 @@ namespace ASI.Basecode.WebApp.Controllers
                 .Select(u => new
                 {
                     u.Id,
-                    u.UserId,
                     u.Email,
                     FirstName = u.FirstName,
                     LastName = u.LastName,
@@ -247,7 +243,6 @@ namespace ASI.Basecode.WebApp.Controllers
 
             var newUser = new User
             {
-                UserId = model.Email,
                 Email = model.Email,
                 FirstName = model.FirstName ?? string.Empty,
                 LastName = model.LastName ?? string.Empty,
@@ -300,7 +295,6 @@ namespace ASI.Basecode.WebApp.Controllers
                 var existing = _userRepository.GetByEmail(model.Email);
                 if (existing != null && existing.Id != user.Id) return Conflict(new { message = "Email already in use by another user." });
                 user.Email = model.Email;
-                user.UserId = model.Email;
             }
 
             if (!string.IsNullOrWhiteSpace(model.Password))

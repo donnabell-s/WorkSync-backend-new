@@ -55,16 +55,11 @@ namespace ASI.Basecode.WebApp
 
             this._services.AddHttpClient();
 
+            // CORS: allow Vite dev server origin. Include AllowCredentials if cookies are used from browser.
             this._services.AddCors(options =>
             {
-                options.AddPolicy("AllowReactApp",
-                    builder => builder.WithOrigins(
-                        "http://localhost:5173",
-                        "http://localhost:3000",
-                        "http://localhost:8080",
-                        "https://localhost:5173",
-                        "https://localhost:3000",
-                        "https://localhost:8080")
+                options.AddPolicy("AllowVite",
+                    builder => builder.WithOrigins("http://localhost:5173")
                                       .AllowAnyHeader()
                                       .AllowAnyMethod()
                                       .AllowCredentials());

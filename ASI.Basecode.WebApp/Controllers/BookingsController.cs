@@ -188,6 +188,16 @@ namespace ASI.Basecode.WebApp.Controllers
         {
             var items = await _bookingService.GetBookingsAsync(cancellationToken);
 
+            var userRefId = GetCurrentUserRefId();
+            var isAdmin = HttpContext.User?.IsInRole("Admin") == true || HttpContext.User?.IsInRole("SuperAdmin") == true;
+
+            // Non-admin users may only view their own bookings
+            if (!isAdmin)
+            {
+                if (userRefId == null) return Forbid();
+                items = items.Where(b => b.UserRefId == userRefId).ToList();
+            }
+
             var results = items.Select(b => new
             {
                 b.BookingId,
@@ -226,6 +236,15 @@ namespace ASI.Basecode.WebApp.Controllers
         {
             var item = await _bookingService.GetByIdAsync(id, cancellationToken);
             if (item == null) return NotFound();
+
+            var userRefId = GetCurrentUserRefId();
+            var isAdmin = HttpContext.User?.IsInRole("Admin") == true || HttpContext.User?.IsInRole("SuperAdmin") == true;
+
+            // Non-admin may only view their own booking
+            if (!isAdmin)
+            {
+                if (userRefId == null || item.UserRefId == null || item.UserRefId != userRefId) return Forbid();
+            }
 
             var result = new
             {
