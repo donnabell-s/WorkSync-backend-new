@@ -1,0 +1,189 @@
+{
+	"info": {
+		"_postman_id": "8281a475-8778-4338-8ecc-e9f72397e8a2",
+		"name": "WorkSync Dashboard",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "49015278",
+		"_collection_link": "https://alliyanagarcia-14c0005e-5748029.postman.co/workspace/1b248a2c-cb33-405c-87d9-ebf6081af261/collection/49015278-8281a475-8778-4338-8ecc-e9f72397e8a2?action=share&source=collection_link&creator=49015278"
+	},
+	"item": [
+		{
+			"name": "Dashboard Summary for KPI",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "file",
+					"file": {}
+				},
+				"url": {
+					"raw": "{{base_url}}/api/Dashboard/Summary",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"Dashboard",
+						"Summary"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Bookings Trend",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"startDate\": \"\",\r\n    \"endDate\": \"\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/api/Dashboard/BookingsTrend",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"Dashboard",
+						"BookingsTrend"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Bookings Trend",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"startDate\": \"\",\r\n    \"endDate\": \"\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/api/Dashboard/BookingsTrendPost",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"Dashboard",
+						"BookingsTrendPost"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Peak Usage",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{base_url}}/api/Dashboard/PeakUsage?date",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"Dashboard",
+						"PeakUsage"
+					],
+					"query": [
+						{
+							"key": "date",
+							"value": null
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Peak Usage",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"date\": \"\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{base_url}}/api/Dashboard/PeakUsagePost",
+					"host": [
+						"{{base_url}}"
+					],
+					"path": [
+						"api",
+						"Dashboard",
+						"PeakUsagePost"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1laWRlbnRpZmllciI6MiwiaHR0cDovL3NjaGVtYXMueG1sc29hcC5vcmcvd3MvMjAwNS8wNS9pZGVudGl0eS9jbGFpbXMvbmFtZSI6IlNhbXBsZSBBZG1pbiIsIlVzZXJJZCI6InNhbXBsZWFkbWluQGV4YW1wbGUuY29tIiwiVXNlck5hbWUiOiJTYW1wbGUgQWRtaW4iLCJodHRwOi8vc2NoZW1hcy5taWNyb3NvZnQuY29tL3dzLzIwMDgvMDYvaWRlbnRpdHkvY2xhaW1zL3JvbGUiOiJzdXBlcmFkbWluIiwicm9sZSI6InN1cGVyYWRtaW4iLCJVc2VyUmVmSWQiOjIsIm5iZiI6MTc2Mjk3ODg5MCwiZXhwIjoxNzYyOTg2MDkwLCJpc3MiOiJhc2kuYmFzZWNvZGUiLCJhdWQiOiJBc2lCYXNlY29kQXVkaWVuY2UifQ.UUlM0sDpVsR1y149rF1k80w3YOwabp-EY8gV3ZD5W_g",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"requests": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"requests": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": ""
+		}
+	]
+}
