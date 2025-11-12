@@ -73,6 +73,13 @@ namespace ASI.Basecode.WebApp.Controllers
         /// <summary>
         /// Login Method
         /// </summary>
+        /// 
+
+        [HttpPost("Test")]
+        public IActionResult Test()
+        {
+            return Ok("Server works!");
+        }
 
         [HttpPost]
         [AllowAnonymous]

@@ -9,17 +9,18 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace ASI.Basecode.Data.ASI.Basecode.Data.Migrations
+namespace ASI.Basecode.Data.Migrations
 {
     [DbContext(typeof(WorkSyncDbContext))]
-    [Migration("20251111150818_AddExpectedAttendeesToBookings")]
-    partial class AddExpectedAttendeesToBookings
+    [Migration("20251112154437_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
+                .HasDefaultSchema("ws")
                 .HasAnnotation("ProductVersion", "9.0.6")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
@@ -256,18 +257,20 @@ namespace ASI.Basecode.Data.ASI.Basecode.Data.Migrations
                         .IsUnicode(false)
                         .HasColumnType("varchar(255)");
 
-                    b.Property<string>("Fname")
+                    b.Property<string>("FirstName")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("Fname");
 
                     b.Property<bool>("IsActive")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("bit")
                         .HasDefaultValue(true);
 
-                    b.Property<string>("Lname")
+                    b.Property<string>("LastName")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("Lname");
 
                     b.Property<string>("PasswordHash")
                         .IsRequired()
