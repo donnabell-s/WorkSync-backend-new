@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
+using System.Threading.Tasks;
 
 namespace ASI.Basecode.WebApp
 {
@@ -51,6 +52,31 @@ namespace ASI.Basecode.WebApp
                 options.AccessDeniedPath = new PathString("/html/Forbidden.html");
                 options.ReturnUrlParameter = "ReturnUrl";
                 options.TicketDataFormat = new CustomJwtDataFormat(SecurityAlgorithms.HmacSha256, _tokenValidationParameters, Configuration, tokenProviderOptionsFactory);
+
+                // Prevent automatic redirects for API calls; return status codes instead
+                options.Events = new Microsoft.AspNetCore.Authentication.Cookies.CookieAuthenticationEvents
+                {
+                    OnRedirectToLogin = ctx =>
+                    {
+                        if (IsApiRequest(ctx.Request))
+                        {
+                            ctx.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                            return Task.CompletedTask;
+                        }
+                        ctx.Response.Redirect(ctx.RedirectUri);
+                        return Task.CompletedTask;
+                    },
+                    OnRedirectToAccessDenied = ctx =>
+                    {
+                        if (IsApiRequest(ctx.Request))
+                        {
+                            ctx.Response.StatusCode = StatusCodes.Status403Forbidden;
+                            return Task.CompletedTask;
+                        }
+                        ctx.Response.Redirect(ctx.RedirectUri);
+                        return Task.CompletedTask;
+                    }
+                };
             });
 
             this._services.AddAuthorization(options =>
@@ -71,6 +97,11 @@ namespace ASI.Basecode.WebApp
             {
                 options.Filters.Add(new AuthorizeFilter("RequireAuthenticatedUser"));
             });
+        }
+
+        private static bool IsApiRequest(HttpRequest request)
+        {
+            return request.Path.StartsWithSegments(new PathString("/api"));
         }
     }
 }

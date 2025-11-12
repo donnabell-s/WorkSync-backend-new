@@ -18,8 +18,6 @@ namespace ASI.Basecode.Data.Repositories
             return this.GetDbSet<User>();
         }
 
-        public User GetById(string userId) => GetDbSet<User>().FirstOrDefault(u => u.UserId == userId);
-
         public User GetById(int id) => GetDbSet<User>().FirstOrDefault(u => u.Id == id);
 
         public User GetByEmail(string email) => GetDbSet<User>().FirstOrDefault(u => u.Email == email);
