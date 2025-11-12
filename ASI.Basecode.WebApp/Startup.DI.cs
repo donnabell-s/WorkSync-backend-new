@@ -40,7 +40,7 @@ namespace ASI.Basecode.WebApp
             this._services.AddScoped<ISessionService, SessionService>();
             this._services.AddScoped<IUserPreferenceService, UserPreferenceService>();
             this._services.AddScoped<IBookingLogService, BookingLogService>();
-
+            this._services.AddScoped<IDashboardService, DashboardService>();
 
             // Repositories
             this._services.AddScoped<IUserRepository, UserRepository>();
@@ -49,6 +49,7 @@ namespace ASI.Basecode.WebApp
             this._services.AddScoped<IRoomRepository, RoomRepository>();
             this._services.AddScoped<ISessionRepository, SessionRepository>();
             this._services.AddScoped<IUserPreferenceRepository, UserPreferenceRepository>();
+            this._services.AddScoped<IDashboardRepository, DashboardRepository>();
 
             // Manager Class
             this._services.AddScoped<SignInManager>();
