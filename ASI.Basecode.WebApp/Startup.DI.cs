@@ -59,10 +59,16 @@ namespace ASI.Basecode.WebApp
             this._services.AddCors(options =>
             {
                 options.AddPolicy("AllowVite",
-                    builder => builder.WithOrigins("http://localhost:5173")
-                                      .AllowAnyHeader()
-                                      .AllowAnyMethod()
-                                      .AllowCredentials());
+                    builder => builder
+                        .WithOrigins(
+                            "http://localhost:5173",
+                            "http://localhost:5174",
+                            "http://127.0.0.1:5173",
+                            "http://127.0.0.1:5174"
+                        )
+                        .AllowAnyHeader()
+                        .AllowAnyMethod()
+                        .AllowCredentials());
             });
             this._services.AddControllers();
         }

@@ -7,6 +7,8 @@ using Microsoft.AspNetCore.Mvc.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using System.Threading.Tasks;
+using System.Linq;
+using System.Security.Claims;
 
 namespace ASI.Basecode.WebApp
 {
@@ -81,15 +83,36 @@ namespace ASI.Basecode.WebApp
 
             this._services.AddAuthorization(options =>
             {
+                // authenticated users policy
                 options.AddPolicy("RequireAuthenticatedUser", policy =>
                 {
                     policy.RequireAuthenticatedUser();
                 });
 
-                // Admin policy that accepts either Admin or SuperAdmin roles
+                // Admin policy: accept Admin OR SuperAdmin roles, case-insensitive
                 options.AddPolicy("RequireAdmin", policy =>
                 {
-                    policy.RequireRole("Admin", "SuperAdmin");
+                    policy.RequireAssertion(context =>
+                    {
+                        var user = context.User;
+                        if (user == null) return false;
+                        return user.Claims.Any(c =>
+                            (c.Type == ClaimTypes.Role || c.Type == "role" || c.Type == "roles") &&
+                            (string.Equals(c.Value, "Admin", System.StringComparison.OrdinalIgnoreCase) || string.Equals(c.Value, "SuperAdmin", System.StringComparison.OrdinalIgnoreCase)));
+                    });
+                });
+
+                // SuperAdmin only policy, case-insensitive
+                options.AddPolicy("RequireSuperAdmin", policy =>
+                {
+                    policy.RequireAssertion(context =>
+                    {
+                        var user = context.User;
+                        if (user == null) return false;
+                        return user.Claims.Any(c =>
+                            (c.Type == ClaimTypes.Role || c.Type == "role" || c.Type == "roles") &&
+                            string.Equals(c.Value, "SuperAdmin", System.StringComparison.OrdinalIgnoreCase));
+                    });
                 });
             });
 
