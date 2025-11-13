@@ -122,6 +122,9 @@ namespace ASI.Basecode.WebApp
             services.Configure<FormOptions>(options =>
             {
                 options.ValueLengthLimit = 1024 * 1024 * 100;
+                // Allow multipart body up to 50 MB
+                options.MultipartBodyLengthLimit = 1024 * 1024 * 50; // 50MB
+                options.MultipartHeadersLengthLimit = 1024 * 1024; // 1MB for headers
             });
 
             services.AddSingleton<IFileProvider>(
