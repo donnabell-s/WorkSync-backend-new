@@ -5,7 +5,6 @@ using ASI.Basecode.Services.Services;
 using ASI.Basecode.WebApp.Authentication;
 using ASI.Basecode.WebApp.Models;
 using ASI.Basecode.WebApp.Mvc;
-using ASI.Basecode.WebApp.Extensions.Configuration;
 using AutoMapper;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -18,7 +17,6 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using ASI.Basecode.Data.Interfaces;
-using System.Security.Claims;
 
 namespace ASI.Basecode.WebApp.Controllers
 {
@@ -34,57 +32,34 @@ namespace ASI.Basecode.WebApp.Controllers
         private readonly IUserRepository _userRepository;
         private readonly IUnitOfWork _unitOfWork;
 
-        /// <summary>
-        /// Initializes a new instance of the <see cref="AccountController"/> class.
-        /// </summary>
-        /// <param name="signInManager">The sign in manager.</param>
-        /// <param name="localizer">The localizer.</param>
-        /// <param name="userService">The user service.</param>
-        /// <param name="httpContextAccessor">The HTTP context accessor.</param>
-        /// <param name="loggerFactory">The logger factory.</param>
-        /// <param name="configuration">The configuration.</param>
-        /// <param name="mapper">The mapper.</param>
-        /// <param name="tokenValidationParametersFactory">The token validation parameters factory.</param>
-        /// <param name="tokenProviderOptionsFactory">The token provider options factory.</param>
-        /// <param name="userRepository">The user repository.</param>
-        /// <param name="unitOfWork">The unit of work.</param>
         public AccountController(
-                            SignInManager signInManager,
-                            IHttpContextAccessor httpContextAccessor,
-                            ILoggerFactory loggerFactory,
-                            IConfiguration configuration,
-                            IMapper mapper,
-                            IUserService userService,
-                            TokenValidationParametersFactory tokenValidationParametersFactory,
-                            TokenProviderOptionsFactory tokenProviderOptionsFactory,
-                            IUserRepository userRepository,
-                            IUnitOfWork unitOfWork) : base(httpContextAccessor, loggerFactory, configuration, mapper)
+            SignInManager signInManager,
+            IHttpContextAccessor httpContextAccessor,
+            ILoggerFactory loggerFactory,
+            IConfiguration configuration,
+            IMapper mapper,
+            IUserService userService,
+            TokenValidationParametersFactory tokenValidationParametersFactory,
+            TokenProviderOptionsFactory tokenProviderOptionsFactory,
+            IUserRepository userRepository,
+            IUnitOfWork unitOfWork) : base(httpContextAccessor, loggerFactory, configuration, mapper)
         {
-            this._sessionManager = new SessionManager(this._session);
-            this._signInManager = signInManager;
-            this._tokenProviderOptionsFactory = tokenProviderOptionsFactory;
-            this._tokenValidationParametersFactory = tokenValidationParametersFactory;
-            this._appConfiguration = configuration;
-            this._userService = userService;
-            this._userRepository = userRepository;
-            this._unitOfWork = unitOfWork;
+            _sessionManager = new SessionManager(this._session);
+            _signInManager = signInManager;
+            _tokenProviderOptionsFactory = tokenProviderOptionsFactory;
+            _tokenValidationParametersFactory = tokenValidationParametersFactory;
+            _appConfiguration = configuration;
+            _userService = userService;
+            _userRepository = userRepository;
+            _unitOfWork = unitOfWork;
         }
-
-        /// <summary>
-        /// Login Method
-        /// </summary>
 
         [HttpPost]
         [AllowAnonymous]
-        public async Task<IActionResult> Login([FromBody] LoginViewModel model)
-
+        public IActionResult Login([FromBody] LoginViewModel model)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
+            if (!ModelState.IsValid) return BadRequest(ModelState);
 
-            // Authenticate against DB using email
             User user = null;
             var result = _userService.AuthenticateUserByEmail(model.Email, model.Password, ref user);
 
@@ -93,20 +68,26 @@ namespace ASI.Basecode.WebApp.Controllers
                 return Unauthorized(new { message = "Invalid email or password." });
             }
 
-            // Create claims identity (includes role claim from SignInManager)
             var identity = _signInManager.CreateClaimsIdentity(user);
 
-            // Build token provider options and generate JWT
-            var tokenConfig = ASI.Basecode.WebApp.Extensions.Configuration.ConfigurationExtensions.GetTokenAuthentication(_appConfiguration);
+            // Read token authentication settings directly from configuration section
+            // Read token authentication values directly via configuration keys to avoid extension method ambiguity
+            var tokenConfig = new ASI.Basecode.WebApp.Models.TokenAuthentication
+            {
+                SecretKey = _appConfiguration["TokenAuthentication:SecretKey"],
+                Audience = _appConfiguration["TokenAuthentication:Audience"],
+                TokenPath = _appConfiguration["TokenAuthentication:TokenPath"],
+                CookieName = _appConfiguration["TokenAuthentication:CookieName"],
+                ExpirationMinutes = int.TryParse(_appConfiguration["TokenAuthentication:ExpirationMinutes"], out var mins) ? mins : 60
+            };
             var signingKey = new SymmetricSecurityKey(System.Text.Encoding.ASCII.GetBytes(tokenConfig.SecretKey));
             var tokenOptions = TokenProviderOptionsFactory.Create(tokenConfig, signingKey);
 
             var tokenProvider = new TokenProvider(Options.Create(tokenOptions));
             var encodedJwt = tokenProvider.GetJwtSecurityToken(identity, tokenOptions);
 
-            // Optionally set session values
-            this._session.SetString("HasSession", "Exist");
-            this._session.SetString("UserName", user.Email ?? string.Empty);
+            _session.SetString("HasSession", "Exist");
+            _session.SetString("UserName", user.Email ?? string.Empty);
 
             var response = new
             {
@@ -118,28 +99,19 @@ namespace ASI.Basecode.WebApp.Controllers
             return Ok(response);
         }
 
-        /// <summary>
-        /// Register Method
-        /// </summary>
         [HttpPost]
         [AllowAnonymous]
         public IActionResult Register([FromBody] RegisterViewModel model)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
+            if (!ModelState.IsValid) return BadRequest(ModelState);
 
-            // Check if user already exists by email
             var existing = _userRepository.GetByEmail(model.Email);
-            if (existing != null)
-            {
-                return Conflict(new { message = "User already exists." });
-            }
+            if (existing != null) return Conflict(new { message = "User already exists." });
 
             var newUser = new User
             {
                 Email = model.Email,
+                UserId = System.Guid.NewGuid().ToString(),
                 FirstName = model.FirstName ?? string.Empty,
                 LastName = model.LastName ?? string.Empty,
                 PasswordHash = PasswordManager.EncryptPassword(model.Password),
@@ -155,25 +127,28 @@ namespace ASI.Basecode.WebApp.Controllers
             return CreatedAtAction(nameof(Register), result);
         }
 
-        /// <summary>
-        /// Sign Out current account
-        /// </summary>
         [AllowAnonymous]
         public async Task<IActionResult> SignOutUser()
         {
-            await this._signInManager.SignOutAsync();
+            await _signInManager.SignOutAsync();
             return Ok();
         }
 
-        // ChangeRole endpoint removed temporarily because it's not working. Re-add when ready.
-
-        // GET: api/Account/GetUsers
-        // Admins and SuperAdmins may call this to list users
         [HttpGet]
         [Authorize(Policy = "RequireAdmin")]
         public IActionResult GetUsers()
         {
-            var users = _userRepository.GetUsers()
+            // Materialize users server-side first then perform case-insensitive role-part matching in-memory
+            var allUsers = _userRepository.GetUsers().AsEnumerable();
+
+            var users = allUsers
+                .Where(u =>
+                {
+                    if (string.IsNullOrWhiteSpace(u.Role)) return false;
+                    // split on common delimiters and check any role equals 'user'
+                    var parts = u.Role.Split(new[] { ',', ';', '|' }, StringSplitOptions.RemoveEmptyEntries);
+                    return parts.Any(p => string.Equals(p.Trim(), "user", StringComparison.OrdinalIgnoreCase));
+                })
                 .Select(u => new
                 {
                     u.Id,
@@ -190,17 +165,12 @@ namespace ASI.Basecode.WebApp.Controllers
             return Ok(users);
         }
 
-        // GET: api/Account/GetAdmins
-        // Only SuperAdmin may call this to list admins (Admin and SuperAdmin accounts)
         [HttpGet]
-        [Authorize(Roles = "SuperAdmin")]
+        [Authorize(Policy = "RequireSuperAdmin")]
         public IActionResult GetAdmins()
         {
-            var admins = _userRepository.GetUsers()
-                .Where(u => u.Role != null && (
-                    u.Role.ToUpper() == "ADMIN" ||
-                    u.Role.ToUpper() == "SUPERADMIN"
-                ))
+            var admins = _userRepository.GetUsers().AsEnumerable()
+                .Where(u => u.Role != null && u.Role.ToLower().Contains("admin") && !u.Role.ToLower().Contains("super"))
                 .Select(u => new
                 {
                     u.Id,
@@ -217,8 +187,6 @@ namespace ASI.Basecode.WebApp.Controllers
             return Ok(admins);
         }
 
-        // POST: api/Account/CreateUser
-        // Admins and SuperAdmins can create users. Creating Admin/SuperAdmin requires caller to be SuperAdmin.
         [HttpPost]
         [Authorize(Policy = "RequireAdmin")]
         public IActionResult CreateUser([FromBody] CreateUserDto model)
@@ -232,13 +200,11 @@ namespace ASI.Basecode.WebApp.Controllers
             if (existing != null) return Conflict(new { message = "User already exists." });
 
             var callerIsSuperAdmin = HttpContext.User?.IsInRole("SuperAdmin") == true;
-
             var requestedRole = string.IsNullOrWhiteSpace(model.Role) ? "user" : model.Role.Trim();
 
-            if ((requestedRole.Equals("Admin", StringComparison.OrdinalIgnoreCase) || requestedRole.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase))
-                && !callerIsSuperAdmin)
+            if ((requestedRole.Equals("Admin", StringComparison.OrdinalIgnoreCase) || requestedRole.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase)) && !callerIsSuperAdmin)
             {
-                return Forbid(); // only SuperAdmin may create admin/superadmin accounts
+                return Forbid();
             }
 
             var newUser = new User
@@ -259,9 +225,7 @@ namespace ASI.Basecode.WebApp.Controllers
             return CreatedAtAction(nameof(GetUsers), result);
         }
 
-        // PUT: api/Account/UpdateUser/{id}
-        // Admins and SuperAdmins may update users; changing admin/superadmin roles requires SuperAdmin
-        [HttpPut("{id}")]
+        [HttpPut("{id:int}")]
         [Authorize(Policy = "RequireAdmin")]
         public IActionResult UpdateUser(int id, [FromBody] UpdateUserDto model)
         {
@@ -272,21 +236,16 @@ namespace ASI.Basecode.WebApp.Controllers
 
             var callerIsSuperAdmin = HttpContext.User?.IsInRole("SuperAdmin") == true;
 
-            // If the target user is an admin/superadmin and caller is not superadmin => forbid any change to that admin
             if (!callerIsSuperAdmin && user.Role != null && (user.Role.Equals("Admin", StringComparison.OrdinalIgnoreCase) || user.Role.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase)))
             {
                 return Forbid();
             }
 
-            // If model requests role change to admin/superadmin, require caller superadmin
-            if (!string.IsNullOrWhiteSpace(model.Role) &&
-                (model.Role.Equals("Admin", StringComparison.OrdinalIgnoreCase) || model.Role.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase)) &&
-                !callerIsSuperAdmin)
+            if (!string.IsNullOrWhiteSpace(model.Role) && (model.Role.Equals("Admin", StringComparison.OrdinalIgnoreCase) || model.Role.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase)) && !callerIsSuperAdmin)
             {
                 return Forbid();
             }
 
-            // Apply updates
             if (!string.IsNullOrWhiteSpace(model.FirstName)) user.FirstName = model.FirstName.Trim();
             if (!string.IsNullOrWhiteSpace(model.LastName)) user.LastName = model.LastName.Trim();
 
@@ -297,10 +256,7 @@ namespace ASI.Basecode.WebApp.Controllers
                 user.Email = model.Email;
             }
 
-            if (!string.IsNullOrWhiteSpace(model.Password))
-            {
-                user.PasswordHash = PasswordManager.EncryptPassword(model.Password);
-            }
+            if (!string.IsNullOrWhiteSpace(model.Password)) user.PasswordHash = PasswordManager.EncryptPassword(model.Password);
 
             if (model.IsActive.HasValue) user.IsActive = model.IsActive.Value;
             if (!string.IsNullOrWhiteSpace(model.Role)) user.Role = model.Role.Trim();
@@ -313,9 +269,7 @@ namespace ASI.Basecode.WebApp.Controllers
             return NoContent();
         }
 
-        // DELETE: api/Account/DeleteUser/{id}
-        // Admins and SuperAdmins can delete users. Deleting Admin or SuperAdmin accounts is restricted to SuperAdmin only.
-        [HttpDelete("{id}")]
+        [HttpDelete("{id:int}")]
         [Authorize(Policy = "RequireAdmin")]
         public IActionResult DeleteUser(int id)
         {
@@ -324,10 +278,9 @@ namespace ASI.Basecode.WebApp.Controllers
 
             var callerIsSuperAdmin = HttpContext.User?.IsInRole("SuperAdmin") == true;
 
-            if (!callerIsSuperAdmin && user.Role != null &&
-                (user.Role.Equals("Admin", StringComparison.OrdinalIgnoreCase) || user.Role.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase)))
+            if (!callerIsSuperAdmin && user.Role != null && (user.Role.Equals("Admin", StringComparison.OrdinalIgnoreCase) || user.Role.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase)))
             {
-                return Forbid(); // only superadmin can delete admin/superadmin accounts
+                return Forbid();
             }
 
             _userRepository.Delete(user);
@@ -335,7 +288,6 @@ namespace ASI.Basecode.WebApp.Controllers
 
             return NoContent();
         }
-
     }
 
     public class CreateUserDto
