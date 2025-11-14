@@ -70,6 +70,30 @@ namespace ASI.Basecode.WebApp.Controllers
 
             var identity = _signInManager.CreateClaimsIdentity(user);
 
+            // Ensure we have full user properties (FirstName/LastName) from repository in case Authenticate returned a lightweight object
+            try
+            {
+                User fullUser = null;
+                if (!string.IsNullOrWhiteSpace(user?.Email))
+                {
+                    fullUser = _userRepository.GetByEmail(user.Email);
+                }
+                // Fall back to id lookup if email lookup not possible
+                if (fullUser == null && user != null)
+                {
+                    fullUser = _userRepository.GetById(user.Id);
+                }
+
+                if (fullUser != null)
+                {
+                    user = fullUser;
+                }
+            }
+            catch
+            {
+                // ignore and continue with whatever data we have on user
+            }
+
             // Read token authentication settings directly from configuration section
             // Read token authentication values directly via configuration keys to avoid extension method ambiguity
             var tokenConfig = new ASI.Basecode.WebApp.Models.TokenAuthentication
@@ -93,7 +117,14 @@ namespace ASI.Basecode.WebApp.Controllers
             {
                 access_token = encodedJwt,
                 expires_in = (int)tokenOptions.Expiration.TotalSeconds,
-                user = new { id = user.Id, email = user.Email, role = user.Role }
+                user = new
+                {
+                    id = user.Id,
+                    email = user.Email,
+                    role = user.Role,
+                    firstName = user.FirstName ?? string.Empty,
+                    lastName = user.LastName ?? string.Empty
+                }
             };
 
             return Ok(response);
