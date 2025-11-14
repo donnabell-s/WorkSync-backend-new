@@ -188,6 +188,16 @@ namespace ASI.Basecode.WebApp.Controllers
         {
             var items = await _bookingService.GetBookingsAsync(cancellationToken);
 
+            var userRefId = GetCurrentUserRefId();
+            var isAdmin = HttpContext.User?.IsInRole("Admin") == true || HttpContext.User?.IsInRole("SuperAdmin") == true;
+
+            // Non-admin users may only view their own bookings
+            if (!isAdmin)
+            {
+                if (userRefId == null) return Forbid();
+                items = items.Where(b => b.UserRefId == userRefId).ToList();
+            }
+
             var results = items.Select(b => new
             {
                 b.BookingId,
@@ -226,6 +236,15 @@ namespace ASI.Basecode.WebApp.Controllers
         {
             var item = await _bookingService.GetByIdAsync(id, cancellationToken);
             if (item == null) return NotFound();
+
+            var userRefId = GetCurrentUserRefId();
+            var isAdmin = HttpContext.User?.IsInRole("Admin") == true || HttpContext.User?.IsInRole("SuperAdmin") == true;
+
+            // Non-admin may only view their own booking
+            if (!isAdmin)
+            {
+                if (userRefId == null || item.UserRefId == null || item.UserRefId != userRefId) return Forbid();
+            }
 
             var result = new
             {
@@ -505,6 +524,35 @@ namespace ASI.Basecode.WebApp.Controllers
             booking.UpdatedAt = DateTime.UtcNow;
             await _bookingService.UpdateAsync(booking, cancellationToken);
             return NoContent();
+        }
+
+        // New endpoint: exposes taken time slots for a specified room
+        /// <summary>
+        /// Returns all bookings' time ranges and recurrence flag for the specified room.
+        /// Query parameters: roomId (required).
+        /// Does not expose user or other private details.
+        /// </summary>
+        [HttpGet]
+        public async Task<IActionResult> GetTakenSlots([FromQuery] string roomId, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(roomId))
+                return BadRequest(new { message = "Query param 'roomId' is required." });
+
+            var allBookings = await _bookingService.GetBookingsAsync(cancellationToken);
+
+            var roomBookings = allBookings
+                .Where(b => string.Equals(b.RoomId, roomId, StringComparison.OrdinalIgnoreCase) && b.StartDatetime != null && b.EndDatetime != null)
+                .Select(b => new
+                {
+                    start = b.StartDatetime,
+                    end = b.EndDatetime,
+                    isRecurring = !string.IsNullOrWhiteSpace(b.Recurrence),
+                    recurrence = string.IsNullOrWhiteSpace(b.Recurrence) ? null : b.Recurrence
+                })
+                .OrderBy(r => r.start)
+                .ToList();
+
+            return Ok(roomBookings);
         }
     }
 }

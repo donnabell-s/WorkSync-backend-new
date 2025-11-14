@@ -197,3 +197,8 @@ $RECYCLE.BIN/
 node_modules
 */src/*/Scripts/**/*.js
 */src/*/Scripts/**/*.js.map
+
+# Ignore uploaded room images stored by the web app (do not track user uploads)
+ASI.Basecode.WebApp/wwwroot/room-images/
+# If you want to keep an empty folder in the repo, add a .gitkeep inside the folder and commit it explicitly
+# e.g. create file: ASI.Basecode.WebApp/wwwroot/room-images/.gitkeep

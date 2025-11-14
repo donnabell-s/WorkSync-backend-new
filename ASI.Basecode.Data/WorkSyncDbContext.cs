@@ -178,13 +178,11 @@ public partial class WorkSyncDbContext : DbContext
 
             entity.HasIndex(e => e.Email, "UQ__Users__A9D1053413C382AE").IsUnique();
 
+            // Map legacy UserId string column for compatibility
             entity.Property(e => e.UserId)
                 .HasMaxLength(50)
                 .IsUnicode(false);
-            entity.Property(e => e.Email)
-                .IsRequired()
-                .HasMaxLength(255)
-                .IsUnicode(false);
+
             // Map FirstName/LastName properties to existing database columns Fname/Lname for compatibility
             entity.Property(e => e.FirstName).HasMaxLength(100).HasColumnName("Fname");
             entity.Property(e => e.LastName).HasMaxLength(100).HasColumnName("Lname");

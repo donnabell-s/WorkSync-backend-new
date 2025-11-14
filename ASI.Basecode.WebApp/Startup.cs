@@ -19,6 +19,7 @@ using System;
 using System.IdentityModel.Tokens.Jwt;
 using System.IO;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace ASI.Basecode.WebApp
 {
@@ -103,18 +104,6 @@ namespace ASI.Basecode.WebApp
             //Configuration
             services.Configure<TokenAuthentication>(Configuration.GetSection("TokenAuthentication"));
 
-            // CORS - allow React frontend
-            services.AddCors(options =>
-            {
-                options.AddPolicy("AllowReactApp", builder =>
-                {
-                    builder.WithOrigins("http://localhost:3000", "http://localhost:5173")
-                           .AllowAnyHeader()
-                           .AllowAnyMethod()
-                           .AllowCredentials();
-                });
-            });
-
             // Session
             services.AddSession(options =>
             {
@@ -133,6 +122,9 @@ namespace ASI.Basecode.WebApp
             services.Configure<FormOptions>(options =>
             {
                 options.ValueLengthLimit = 1024 * 1024 * 100;
+                // Allow multipart body up to 50 MB
+                options.MultipartBodyLengthLimit = 1024 * 1024 * 50; // 50MB
+                options.MultipartHeadersLengthLimit = 1024 * 1024; // 1MB for headers
             });
 
             services.AddSingleton<IFileProvider>(
@@ -154,26 +146,33 @@ namespace ASI.Basecode.WebApp
 
             if (!this._environment.IsDevelopment())
             {
+                // Production: enforce HSTS and HTTPS redirection
                 this._app.UseHsts();
+                this._app.UseHttpsRedirection();
             }
 
             this.ConfigureLogger();
 
             this._app.UseTokenProvider(_tokenProviderOptions);
 
-            this._app.UseHttpsRedirection();
             this._app.UseStaticFiles();
 
             // Localization
             var options = this._app.ApplicationServices.GetService<IOptions<RequestLocalizationOptions>>();
             this._app.UseRequestLocalization(options.Value);
-            this._app.UseCors("AllowReactApp");
 
-            this._app.UseSession();
+            // Routing must come before CORS
             this._app.UseRouting();
+
+            // Apply Vite CORS policy
+            this._app.UseCors("AllowVite");
+
+            // Session
+            this._app.UseSession();
 
             this._app.UseAuthentication();
             this._app.UseAuthorization();
+
             this._app.UseEndpoints(endpoints => endpoints.MapControllers());
         }
     }

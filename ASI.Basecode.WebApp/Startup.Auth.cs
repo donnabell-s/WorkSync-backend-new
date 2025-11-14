@@ -6,6 +6,9 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
+using System.Threading.Tasks;
+using System.Linq;
+using System.Security.Claims;
 
 namespace ASI.Basecode.WebApp
 {
@@ -51,19 +54,65 @@ namespace ASI.Basecode.WebApp
                 options.AccessDeniedPath = new PathString("/html/Forbidden.html");
                 options.ReturnUrlParameter = "ReturnUrl";
                 options.TicketDataFormat = new CustomJwtDataFormat(SecurityAlgorithms.HmacSha256, _tokenValidationParameters, Configuration, tokenProviderOptionsFactory);
+
+                // Prevent automatic redirects for API calls; return status codes instead
+                options.Events = new Microsoft.AspNetCore.Authentication.Cookies.CookieAuthenticationEvents
+                {
+                    OnRedirectToLogin = ctx =>
+                    {
+                        if (IsApiRequest(ctx.Request))
+                        {
+                            ctx.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                            return Task.CompletedTask;
+                        }
+                        ctx.Response.Redirect(ctx.RedirectUri);
+                        return Task.CompletedTask;
+                    },
+                    OnRedirectToAccessDenied = ctx =>
+                    {
+                        if (IsApiRequest(ctx.Request))
+                        {
+                            ctx.Response.StatusCode = StatusCodes.Status403Forbidden;
+                            return Task.CompletedTask;
+                        }
+                        ctx.Response.Redirect(ctx.RedirectUri);
+                        return Task.CompletedTask;
+                    }
+                };
             });
 
             this._services.AddAuthorization(options =>
             {
+                // authenticated users policy
                 options.AddPolicy("RequireAuthenticatedUser", policy =>
                 {
                     policy.RequireAuthenticatedUser();
                 });
 
-                // Admin policy that accepts either Admin or SuperAdmin roles
+                // Admin policy: accept Admin OR SuperAdmin roles, case-insensitive
                 options.AddPolicy("RequireAdmin", policy =>
                 {
-                    policy.RequireRole("Admin", "SuperAdmin");
+                    policy.RequireAssertion(context =>
+                    {
+                        var user = context.User;
+                        if (user == null) return false;
+                        return user.Claims.Any(c =>
+                            (c.Type == ClaimTypes.Role || c.Type == "role" || c.Type == "roles") &&
+                            (string.Equals(c.Value, "Admin", System.StringComparison.OrdinalIgnoreCase) || string.Equals(c.Value, "SuperAdmin", System.StringComparison.OrdinalIgnoreCase)));
+                    });
+                });
+
+                // SuperAdmin only policy, case-insensitive
+                options.AddPolicy("RequireSuperAdmin", policy =>
+                {
+                    policy.RequireAssertion(context =>
+                    {
+                        var user = context.User;
+                        if (user == null) return false;
+                        return user.Claims.Any(c =>
+                            (c.Type == ClaimTypes.Role || c.Type == "role" || c.Type == "roles") &&
+                            string.Equals(c.Value, "SuperAdmin", System.StringComparison.OrdinalIgnoreCase));
+                    });
                 });
             });
 
@@ -71,6 +120,11 @@ namespace ASI.Basecode.WebApp
             {
                 options.Filters.Add(new AuthorizeFilter("RequireAuthenticatedUser"));
             });
+        }
+
+        private static bool IsApiRequest(HttpRequest request)
+        {
+            return request.Path.StartsWithSegments(new PathString("/api"));
         }
     }
 }
