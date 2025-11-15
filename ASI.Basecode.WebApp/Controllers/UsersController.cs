@@ -64,15 +64,15 @@ namespace ASI.Basecode.WebApp.Controllers
         }
 
         /// <summary>
-        /// Create user (SuperAdmin only)
+        /// Add user (SuperAdmin only)
         /// </summary>
-        [HttpPost]
-        public async Task<IActionResult> Post([FromBody] User model, CancellationToken cancellationToken)
+        [HttpPost("Add")]
+        public async Task<IActionResult> Add([FromBody] User model, CancellationToken cancellationToken)
         {
             var userRole = User.FindFirstValue(ClaimTypes.Role);
             if (userRole?.ToLower() != "superadmin")
             {
-                return Forbid("Only SuperAdmin can create users.");
+                return Forbid("Only SuperAdmin can add users.");
             }
 
             if (model == null) return BadRequest();
@@ -81,15 +81,15 @@ namespace ASI.Basecode.WebApp.Controllers
         }
 
         /// <summary>
-        /// Update user (SuperAdmin only)
+        /// Edit user (SuperAdmin only)
         /// </summary>
-        [HttpPut("{id}")]
-        public async Task<IActionResult> Put(int id, [FromBody] User model, CancellationToken cancellationToken)
+        [HttpPut("Edit/{id}")]
+        public async Task<IActionResult> Edit(int id, [FromBody] User model, CancellationToken cancellationToken)
         {
             var userRole = User.FindFirstValue(ClaimTypes.Role);
             if (userRole?.ToLower() != "superadmin")
             {
-                return Forbid("Only SuperAdmin can update users.");
+                return Forbid("Only SuperAdmin can edit users.");
             }
 
             if (model == null || model.Id != id) return BadRequest();
@@ -98,9 +98,9 @@ namespace ASI.Basecode.WebApp.Controllers
         }
 
         /// <summary>
-        /// Delete user (soft delete) (SuperAdmin only)
+        /// Delete user (SuperAdmin only)
         /// </summary>
-        [HttpDelete("{id}")]
+        [HttpDelete("Delete/{id}")]
         public async Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
         {
             var userRole = User.FindFirstValue(ClaimTypes.Role);
