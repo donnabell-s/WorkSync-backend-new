@@ -166,6 +166,126 @@ namespace ASI.Basecode.WebApp.Controllers
             return Ok();
         }
 
+        /// <summary>
+        /// Get current user's account information
+        /// </summary>
+        [HttpGet]
+        [Authorize]
+        public IActionResult GetMyAccount()
+        {
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(currentUserId) || !int.TryParse(currentUserId, out int userId))
+            {
+                return Unauthorized(new { message = "Unable to identify user." });
+            }
+
+            var user = _userRepository.GetById(userId);
+            if (user == null)
+            {
+                return NotFound(new { message = "User not found." });
+            }
+
+            // Don't return password hash
+            var result = new
+            {
+                id = user.Id,
+                userId = user.UserId,
+                email = user.Email,
+                fname = user.Fname,
+                lname = user.Lname,
+                role = user.Role,
+                isActive = user.IsActive,
+                createdAt = user.CreatedAt,
+                updatedAt = user.UpdatedAt
+            };
+
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// Update current user's account information
+        /// </summary>
+        [HttpPut]
+        [Authorize]
+        public IActionResult UpdateMyAccount([FromBody] UpdateAccountViewModel model)
+        {
+            if (model == null || !ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(currentUserId) || !int.TryParse(currentUserId, out int userId))
+            {
+                return Unauthorized(new { message = "Unable to identify user." });
+            }
+
+            var user = _userRepository.GetById(userId);
+            if (user == null)
+            {
+                return NotFound(new { message = "User not found." });
+            }
+
+            // Update allowed fields
+            if (!string.IsNullOrWhiteSpace(model.Fname))
+                user.Fname = model.Fname;
+            
+            if (!string.IsNullOrWhiteSpace(model.Lname))
+                user.Lname = model.Lname;
+
+            if (!string.IsNullOrWhiteSpace(model.Email) && model.Email != user.Email)
+            {
+                // Check if email is already taken
+                var existingUser = _userRepository.GetByEmail(model.Email);
+                if (existingUser != null && existingUser.Id != userId)
+                {
+                    return Conflict(new { message = "Email already in use." });
+                }
+                user.Email = model.Email;
+            }
+
+            if (!string.IsNullOrWhiteSpace(model.Password))
+            {
+                user.PasswordHash = PasswordManager.EncryptPassword(model.Password);
+            }
+
+            user.UpdatedAt = DateTime.UtcNow;
+
+            _userRepository.Update(user);
+            _unitOfWork.SaveChanges();
+
+            return Ok(new { message = "Account updated successfully." });
+        }
+
+        /// <summary>
+        /// Delete current user's account (soft delete)
+        /// </summary>
+        [HttpDelete]
+        [Authorize]
+        public IActionResult DeleteMyAccount()
+        {
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(currentUserId) || !int.TryParse(currentUserId, out int userId))
+            {
+                return Unauthorized(new { message = "Unable to identify user." });
+            }
+
+            var user = _userRepository.GetById(userId);
+            if (user == null)
+            {
+                return NotFound(new { message = "User not found." });
+            }
+
+            // Soft delete - set IsActive to false
+            user.IsActive = false;
+            user.UpdatedAt = DateTime.UtcNow;
+
+            _userRepository.Update(user);
+            _unitOfWork.SaveChanges();
+
+            return Ok(new { message = "Account deleted successfully." });
+        }
+
         // ChangeRole endpoint removed temporarily because it's not working. Re-add when ready.
 
     }
