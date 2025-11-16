@@ -31,7 +31,7 @@ namespace ASI.Basecode.WebApp.Controllers
         }
 
         /// <summary>
-        /// Get all users (SuperAdmin only)
+        /// View all users (SuperAdmin only)
         /// </summary>
         [HttpGet]
         public async Task<IActionResult> Get(CancellationToken cancellationToken)
@@ -47,7 +47,7 @@ namespace ASI.Basecode.WebApp.Controllers
         }
 
         /// <summary>
-        /// Get user by ID (SuperAdmin only)
+        /// View user by ID (SuperAdmin only)
         /// </summary>
         [HttpGet("{id}")]
         public async Task<IActionResult> Get(int id, CancellationToken cancellationToken)
@@ -61,23 +61,6 @@ namespace ASI.Basecode.WebApp.Controllers
             var user = await _userAdminService.GetUserByIdAsync(id, cancellationToken);
             if (user == null) return NotFound();
             return Ok(user);
-        }
-
-        /// <summary>
-        /// Add user (SuperAdmin only)
-        /// </summary>
-        [HttpPost("Add")]
-        public async Task<IActionResult> Add([FromBody] User model, CancellationToken cancellationToken)
-        {
-            var userRole = User.FindFirstValue(ClaimTypes.Role);
-            if (userRole?.ToLower() != "superadmin")
-            {
-                return Forbid("Only SuperAdmin can add users.");
-            }
-
-            if (model == null) return BadRequest();
-            await _userAdminService.CreateUserAsync(model, cancellationToken);
-            return CreatedAtAction(nameof(Get), new { id = model.Id }, model);
         }
 
         /// <summary>
