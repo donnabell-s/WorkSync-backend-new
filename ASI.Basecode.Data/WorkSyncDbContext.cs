@@ -32,6 +32,10 @@ public partial class WorkSyncDbContext : DbContext
 
     public virtual DbSet<UserPreference> UserPreferences { get; set; }
 
+    public virtual DbSet<Notification> Notifications { get; set; }
+
+    public virtual DbSet<AuditLog> AuditLogs { get; set; }
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
         => optionsBuilder.UseSqlServer("Addr=localhost; database=WorkSync_db; Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True");
@@ -207,6 +211,42 @@ public partial class WorkSyncDbContext : DbContext
             entity.HasOne(d => d.User).WithMany(p => p.UserPreferences)
                 .HasForeignKey("UserRefId")
                 .HasConstraintName("FK_UserPreferences_Users_Id");
+        });
+
+        modelBuilder.Entity<Notification>(entity =>
+        {
+            entity.HasKey(e => e.NotificationId).HasName("PK__Notifica__20CF2E32");
+
+            entity.ToTable("Notifications", "ws");
+
+            entity.Property(e => e.NotificationId).ValueGeneratedOnAdd();
+            entity.Property(e => e.Title).HasMaxLength(200);
+            entity.Property(e => e.Message).HasMaxLength(2000);
+            entity.Property(e => e.Type).HasMaxLength(50);
+            entity.Property<int?>("UserRefId");
+
+            entity.HasOne(d => d.User).WithMany()
+                .HasForeignKey("UserRefId")
+                .HasConstraintName("FK_Notifications_Users_Id");
+        });
+
+        modelBuilder.Entity<AuditLog>(entity =>
+        {
+            entity.HasKey(e => e.AuditLogId).HasName("PK__AuditLogs__5AF33F33");
+
+            entity.ToTable("AuditLogs", "ws");
+
+            entity.Property(e => e.AuditLogId).ValueGeneratedOnAdd();
+            entity.Property(e => e.Action).HasMaxLength(100);
+            entity.Property(e => e.EntityType).HasMaxLength(100);
+            entity.Property(e => e.IpAddress).HasMaxLength(50);
+            entity.Property(e => e.OldValues).HasColumnType("nvarchar(max)");
+            entity.Property(e => e.NewValues).HasColumnType("nvarchar(max)");
+            entity.Property<int?>("UserRefId");
+
+            entity.HasOne(d => d.User).WithMany()
+                .HasForeignKey("UserRefId")
+                .HasConstraintName("FK_AuditLogs_Users_Id");
         });
 
         OnModelCreatingPartial(modelBuilder);
