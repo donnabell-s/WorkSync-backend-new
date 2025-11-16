@@ -52,20 +52,16 @@ namespace ASI.Basecode.Data.Repositories
                 .AsNoTracking()
                 .CountAsync(b => b.EndDatetime.HasValue && b.EndDatetime.Value.Date == todayStart, cancellationToken);
 
-            // Utilization rate calculation
-            // Calculate total booked minutes from booking logs for today
-            var totalBookedMinutes = await GetDbSet<BookingLog>()
+            // Utilization rate calculation - Fixed to directly calculate from Bookings
+            // Calculate total booked minutes from bookings that occur on today
+            var totalBookedMinutes = await GetDbSet<Booking>()
                 .AsNoTracking()
-                .Where(bl => bl.Timestamp.HasValue && bl.Timestamp.Value.Date == todayStart &&
-                           bl.EventType != null && bl.EventType.ToLower().Contains("start"))
-                .Join(GetDbSet<Booking>(),
-                      bl => bl.BookingId,
-                      b => b.BookingId,
-                      (bl, b) => new { b.StartDatetime, b.EndDatetime })
-                .Where(joined => joined.StartDatetime.HasValue && joined.EndDatetime.HasValue)
-                .SumAsync(joined => EF.Functions.DateDiffMinute(joined.StartDatetime.Value, joined.EndDatetime.Value), cancellationToken);
+                .Where(b => b.StartDatetime.HasValue && b.EndDatetime.HasValue &&
+                           b.StartDatetime.Value.Date == todayStart &&
+                           b.Status != null && b.Status.ToLower() != "declined")
+                .SumAsync(b => EF.Functions.DateDiffMinute(b.StartDatetime.Value, b.EndDatetime.Value), cancellationToken);
 
-            // Simplified calculation: assume 8 hours per room per day (480 minutes)
+            // Calculate total available minutes: assume 8 hours per room per day (480 minutes)
             var totalRooms = await GetDbSet<Room>()
                 .AsNoTracking()
                 .CountAsync(r => r.Status != null && r.Status.ToLower() != "maintenance", cancellationToken);
