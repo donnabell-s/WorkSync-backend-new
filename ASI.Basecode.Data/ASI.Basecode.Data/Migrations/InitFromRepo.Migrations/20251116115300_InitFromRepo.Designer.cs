@@ -4,16 +4,19 @@ using ASI.Basecode.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace ASI.Basecode.Data.Migrations
+namespace ASI.Basecode.Data.ASI.Basecode.Data.Migrations.InitFromRepo.Migrations
 {
     [DbContext(typeof(WorkSyncDbContext))]
-    partial class WorkSyncDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251116115300_InitFromRepo")]
+    partial class InitFromRepo
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
