@@ -15,11 +15,16 @@ namespace ASI.Basecode.Services.Services
     public class BookingService : IBookingService
     {
         private readonly IBookingRepository _bookingRepository;
+        private readonly IBookingLogRepository _bookingLogRepository;
         private readonly IUnitOfWork _unitOfWork;
 
-        public BookingService(IBookingRepository bookingRepository, IUnitOfWork unitOfWork)
+        public BookingService(
+            IBookingRepository bookingRepository,
+            IBookingLogRepository bookingLogRepository,
+            IUnitOfWork unitOfWork)
         {
             _bookingRepository = bookingRepository;
+            _bookingLogRepository = bookingLogRepository;
             _unitOfWork = unitOfWork;
         }
 
@@ -71,7 +76,7 @@ namespace ASI.Basecode.Services.Services
             return await _bookingRepository.GetByIdAsync(bookingId, cancellationToken);
         }
 
-        public async Task CreateAsync(Booking booking, CancellationToken cancellationToken = default)
+        public async Task CreateAsync(Booking booking, int? userRefId = null, CancellationToken cancellationToken = default)
         {
             // Ensure BookingId is set because database is configured with ValueGeneratedNever
             if (booking.BookingId == 0)
@@ -82,21 +87,64 @@ namespace ASI.Basecode.Services.Services
             }
 
             await _bookingRepository.AddAsync(booking, cancellationToken);
+            
+            // Create log entry
+            await CreateBookingLogAsync(booking.BookingId, userRefId ?? booking.UserRefId, "Created", booking.Status ?? "Pending", cancellationToken);
+            
             await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
 
-        public async Task UpdateAsync(Booking booking, CancellationToken cancellationToken = default)
+        public async Task UpdateAsync(Booking booking, int? userRefId = null, CancellationToken cancellationToken = default)
         {
+            var existing = await _bookingRepository.GetByIdAsync(booking.BookingId, cancellationToken);
+            var oldStatus = existing?.Status;
+            
             _bookingRepository.Update(booking);
+            
+            string eventType = "Updated";
+            if (oldStatus != booking.Status)
+            {
+                eventType = booking.Status switch
+                {
+                    "Approved" => "Approved",
+                    "Declined" => "Declined",
+                    "Cancelled" => "Cancelled",
+                    _ => "StatusChanged"
+                };
+            }
+            
+            await CreateBookingLogAsync(booking.BookingId, userRefId ?? booking.UserRefId, eventType, booking.Status, cancellationToken);
+            
             await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
 
-        public async Task DeleteAsync(int bookingId, CancellationToken cancellationToken = default)
+        public async Task DeleteAsync(int bookingId, int? userRefId = null, CancellationToken cancellationToken = default)
         {
             var entity = await _bookingRepository.GetByIdAsync(bookingId, cancellationToken);
             if (entity == null) return;
+            
+            await CreateBookingLogAsync(bookingId, userRefId ?? entity.UserRefId, "Cancelled", "Cancelled", cancellationToken);
+            
             _bookingRepository.Delete(entity);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+
+        private async Task CreateBookingLogAsync(int bookingId, int? userRefId, string eventType, string currentStatus, CancellationToken cancellationToken)
+        {
+            var logs = await _bookingLogRepository.GetBookingLogsAsync(cancellationToken);
+            var nextLogId = logs.Any() ? logs.Max(l => l.BookingLogId) + 1 : 1;
+
+            var log = new BookingLog
+            {
+                BookingLogId = nextLogId,
+                BookingId = bookingId,
+                UserRefId = userRefId,
+                EventType = eventType,
+                CurrentStatus = currentStatus,
+                Timestamp = DateTime.UtcNow
+            };
+
+            await _bookingLogRepository.AddAsync(log, cancellationToken);
         }
 
         // Validate booking occurrences against existing bookings and room operating hours

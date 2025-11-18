@@ -13,9 +13,16 @@ namespace ASI.Basecode.Data.Repositories
     {
         public BookingLogRepository(IUnitOfWork unitOfWork) : base(unitOfWork) { }
 
-        public IQueryable<BookingLog> GetBookingLogs() => GetDbSet<BookingLog>();
+        public IQueryable<BookingLog> GetBookingLogs() => GetDbSet<BookingLog>()
+            .Include(bl => bl.Booking)
+                .ThenInclude(b => b.Room)
+            .Include(bl => bl.User);
 
-        public BookingLog GetById(int bookingLogId) => Context.Set<BookingLog>().Find(bookingLogId);
+        public BookingLog GetById(int bookingLogId) => Context.Set<BookingLog>()
+            .Include(bl => bl.Booking)
+                .ThenInclude(b => b.Room)
+            .Include(bl => bl.User)
+            .FirstOrDefault(bl => bl.BookingLogId == bookingLogId);
 
         public void Add(BookingLog entity) => GetDbSet<BookingLog>().Add(entity);
 
@@ -25,17 +32,30 @@ namespace ASI.Basecode.Data.Repositories
 
         public async Task<List<BookingLog>> GetBookingLogsAsync(CancellationToken cancellationToken = default)
         {
-            return await GetDbSet<BookingLog>().ToListAsync(cancellationToken);
+            return await GetDbSet<BookingLog>()
+                .Include(bl => bl.Booking)
+                    .ThenInclude(b => b.Room)
+                .Include(bl => bl.User)
+                .ToListAsync(cancellationToken);
         }
 
         public async Task<List<BookingLog>> GetByBookingIdAsync(int bookingId, CancellationToken cancellationToken = default)
         {
-            return await GetDbSet<BookingLog>().Where(b => b.BookingId == bookingId).ToListAsync(cancellationToken);
+            return await GetDbSet<BookingLog>()
+                .Include(bl => bl.Booking)
+                    .ThenInclude(b => b.Room)
+                .Include(bl => bl.User)
+                .Where(b => b.BookingId == bookingId)
+                .ToListAsync(cancellationToken);
         }
 
         public async Task<BookingLog> GetByIdAsync(int bookingLogId, CancellationToken cancellationToken = default)
         {
-            return await Context.Set<BookingLog>().FindAsync(new object[] { bookingLogId }, cancellationToken).AsTask();
+            return await Context.Set<BookingLog>()
+                .Include(bl => bl.Booking)
+                    .ThenInclude(b => b.Room)
+                .Include(bl => bl.User)
+                .FirstOrDefaultAsync(bl => bl.BookingLogId == bookingLogId, cancellationToken);
         }
 
         public async Task AddAsync(BookingLog entity, CancellationToken cancellationToken = default)

@@ -51,11 +51,8 @@ namespace ASI.Basecode.WebApp.Controllers
             public string Description { get; set; }
             public DateTime StartDatetime { get; set; }
             public DateTime EndDatetime { get; set; }
-            // Accept arbitrary JSON for recurrence to avoid model binder converting to string
             public JsonElement Recurrence { get; set; }
-            // Optional: target user reference id for which the booking is being created (admins can set)
             public int? UserRefId { get; set; }
-            // Optional: expected number of attendees (integer)
             public int? ExpectedAttendees { get; set; }
         }
 
@@ -370,7 +367,8 @@ namespace ASI.Basecode.WebApp.Controllers
                 booking.UserRefId = userRefId;
             }
 
-            await _bookingService.CreateAsync(booking, cancellationToken);
+            // Pass userRefId for logging
+            await _bookingService.CreateAsync(booking, userRefId, cancellationToken);
 
             // Build response DTO to avoid serialization cycles
             var response = new
@@ -477,7 +475,8 @@ namespace ASI.Basecode.WebApp.Controllers
                 booking.UserRefId = request.UserRefId.Value;
             }
 
-            await _bookingService.UpdateAsync(booking, cancellationToken);
+            // Pass userRefId for logging
+            await _bookingService.UpdateAsync(booking, userRefId, cancellationToken);
 
             return NoContent();
         }
@@ -497,7 +496,8 @@ namespace ASI.Basecode.WebApp.Controllers
                 if (!string.Equals(booking.Status, "Pending", StringComparison.OrdinalIgnoreCase)) return BadRequest("Only pending bookings can be cancelled by the user");
             }
 
-            await _bookingService.DeleteAsync(id, cancellationToken);
+            // Pass userRefId for logging
+            await _bookingService.DeleteAsync(id, userRefId, cancellationToken);
             return NoContent();
         }
 
@@ -508,9 +508,13 @@ namespace ASI.Basecode.WebApp.Controllers
         {
             var booking = await _bookingService.GetByIdAsync(id, cancellationToken);
             if (booking == null) return NotFound();
+            
+            var userRefId = GetCurrentUserRefId();
             booking.Status = "Approved";
             booking.UpdatedAt = DateTime.UtcNow;
-            await _bookingService.UpdateAsync(booking, cancellationToken);
+            
+            // Pass userRefId for logging
+            await _bookingService.UpdateAsync(booking, userRefId, cancellationToken);
             return NoContent();
         }
 
@@ -520,9 +524,13 @@ namespace ASI.Basecode.WebApp.Controllers
         {
             var booking = await _bookingService.GetByIdAsync(id, cancellationToken);
             if (booking == null) return NotFound();
+            
+            var userRefId = GetCurrentUserRefId();
             booking.Status = "Declined";
             booking.UpdatedAt = DateTime.UtcNow;
-            await _bookingService.UpdateAsync(booking, cancellationToken);
+            
+            // Pass userRefId for logging
+            await _bookingService.UpdateAsync(booking, userRefId, cancellationToken);
             return NoContent();
         }
 

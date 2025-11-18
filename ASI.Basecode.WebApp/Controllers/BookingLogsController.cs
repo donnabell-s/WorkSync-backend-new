@@ -8,11 +8,13 @@ using Microsoft.Extensions.Configuration;
 using AutoMapper;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 
 namespace ASI.Basecode.WebApp.Controllers
 {
     [ApiController]
     [Route("api/[controller]/[action]")]
+    [AllowAnonymous]
     public class BookingLogsController : ASI.Basecode.WebApp.Mvc.ControllerBase<BookingLogsController>
     {
         private readonly IBookingLogService _logService;
@@ -29,17 +31,56 @@ namespace ASI.Basecode.WebApp.Controllers
         }
 
         [HttpGet]
+        [AllowAnonymous]
         public async Task<IActionResult> Get(CancellationToken cancellationToken)
         {
             var items = await _logService.GetBookingLogsAsync(cancellationToken);
-            return Ok(items);
+            
+            var results = items.Select(log => new
+            {
+                log.BookingLogId,
+                log.BookingId,
+                BookingTitle = log.Booking?.Title ?? "N/A",
+                RoomName = log.Booking?.Room?.Name ?? "N/A",
+                RoomCode = log.Booking?.Room?.Code ?? "N/A",
+                Location = log.Booking?.Room?.Location ?? "N/A",
+                Capacity = log.Booking?.Room?.Seats ?? 0,
+                log.UserRefId,
+                UserEmail = log.User?.Email ?? "Unknown",
+                UserName = $"{log.User?.FirstName ?? ""} {log.User?.LastName ?? ""}".Trim(),
+                Action = log.EventType,
+                Status = log.CurrentStatus,
+                Date = log.Timestamp,
+                log.Timestamp
+            }).OrderByDescending(x => x.Timestamp).ToList();
+
+            return Ok(results);
         }
 
         [HttpGet("booking/{bookingId}")]
         public async Task<IActionResult> GetByBooking(int bookingId, CancellationToken cancellationToken)
         {
             var items = await _logService.GetByBookingIdAsync(bookingId, cancellationToken);
-            return Ok(items);
+            
+            var results = items.Select(log => new
+            {
+                log.BookingLogId,
+                log.BookingId,
+                BookingTitle = log.Booking?.Title ?? "N/A",
+                RoomName = log.Booking?.Room?.Name ?? "N/A",
+                RoomCode = log.Booking?.Room?.Code ?? "N/A",
+                Location = log.Booking?.Room?.Location ?? "N/A",
+                Capacity = log.Booking?.Room?.Seats ?? 0,
+                log.UserRefId,
+                UserEmail = log.User?.Email ?? "Unknown",
+                UserName = $"{log.User?.FirstName ?? ""} {log.User?.LastName ?? ""}".Trim(),
+                Action = log.EventType,
+                Status = log.CurrentStatus,
+                Date = log.Timestamp,
+                log.Timestamp
+            }).OrderByDescending(x => x.Timestamp).ToList();
+
+            return Ok(results);
         }
 
         [HttpGet("{id}")]
@@ -47,7 +88,26 @@ namespace ASI.Basecode.WebApp.Controllers
         {
             var item = await _logService.GetByIdAsync(id, cancellationToken);
             if (item == null) return NotFound();
-            return Ok(item);
+
+            var result = new
+            {
+                item.BookingLogId,
+                item.BookingId,
+                BookingTitle = item.Booking?.Title ?? "N/A",
+                RoomName = item.Booking?.Room?.Name ?? "N/A",
+                RoomCode = item.Booking?.Room?.Code ?? "N/A",
+                Location = item.Booking?.Room?.Location ?? "N/A",
+                Capacity = item.Booking?.Room?.Seats ?? 0,
+                item.UserRefId,
+                UserEmail = item.User?.Email ?? "Unknown",
+                UserName = $"{item.User?.FirstName ?? ""} {item.User?.LastName ?? ""}".Trim(),
+                Action = item.EventType,
+                Status = item.CurrentStatus,
+                Date = item.Timestamp,
+                item.Timestamp
+            };
+
+            return Ok(result);
         }
 
         [HttpPost]

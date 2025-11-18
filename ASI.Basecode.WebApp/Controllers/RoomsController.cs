@@ -190,7 +190,7 @@ namespace ASI.Basecode.WebApp.Controllers
 
             try
             {
-                await _roomService.CreateAsync(room, cancellationToken);
+                await _roomService.CreateAsync(room, null, cancellationToken);
             }
             catch (Exception ex)
             {
@@ -270,7 +270,7 @@ namespace ASI.Basecode.WebApp.Controllers
 
             try
             {
-                await _roomService.UpdateAsync(room, cancellationToken);
+                await _roomService.UpdateAsync(room, null, cancellationToken);
             }
             catch (Exception ex)
             {
@@ -292,7 +292,7 @@ namespace ASI.Basecode.WebApp.Controllers
         {
             try
             {
-                await _roomService.DeleteAsync(id, cancellationToken);
+                await _roomService.DeleteAsync(id, null, cancellationToken);
                 return NoContent();
             }
             catch (Exception ex)

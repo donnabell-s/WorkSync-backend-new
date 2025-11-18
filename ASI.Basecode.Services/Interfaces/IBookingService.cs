@@ -14,12 +14,12 @@ namespace ASI.Basecode.Services.Interfaces
         void Update(Booking booking);
         void Delete(int bookingId);
 
-        // Async variants
+        // Async variants with optional userRefId for logging
         Task<List<Booking>> GetBookingsAsync(CancellationToken cancellationToken = default);
         Task<Booking> GetByIdAsync(int bookingId, CancellationToken cancellationToken = default);
-        Task CreateAsync(Booking booking, CancellationToken cancellationToken = default);
-        Task UpdateAsync(Booking booking, CancellationToken cancellationToken = default);
-        Task DeleteAsync(int bookingId, CancellationToken cancellationToken = default);
+        Task CreateAsync(Booking booking, int? userRefId = null, CancellationToken cancellationToken = default);
+        Task UpdateAsync(Booking booking, int? userRefId = null, CancellationToken cancellationToken = default);
+        Task DeleteAsync(int bookingId, int? userRefId = null, CancellationToken cancellationToken = default);
         Task<(bool IsValid, string Message)> ValidateBookingAsync(string roomId, System.DateTime start, System.DateTime end, string recurrenceJson = null, int? excludeBookingId = null, CancellationToken cancellationToken = default);
     }
 }

@@ -91,6 +91,20 @@ namespace ASI.Basecode.WebApp
 
             services.AddMemoryCache();
 
+            // Add CORS policy for frontend
+            services.AddCors(options =>
+            {
+                options.AddPolicy("AllowVite", builder =>
+                {
+                    builder.WithOrigins(
+                        "http://localhost:5173"
+                    )
+                    .AllowAnyMethod()
+                    .AllowAnyHeader()
+                    .AllowCredentials();
+                });
+            });
+
             // Register SQL database configuration context as services.
             services.AddDbContext<WorkSyncDbContext>(options =>
             {

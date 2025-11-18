@@ -6,17 +6,23 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
+using System;
 
 namespace ASI.Basecode.Services.Services
 {
     public class RoomService : IRoomService
     {
         private readonly IRoomRepository _roomRepository;
+        private readonly IRoomLogRepository _roomLogRepository;
         private readonly IUnitOfWork _unitOfWork;
 
-        public RoomService(IRoomRepository roomRepository, IUnitOfWork unitOfWork)
+        public RoomService(
+            IRoomRepository roomRepository,
+            IRoomLogRepository roomLogRepository,
+            IUnitOfWork unitOfWork)
         {
             _roomRepository = roomRepository;
+            _roomLogRepository = roomLogRepository;
             _unitOfWork = unitOfWork;
         }
 
@@ -91,7 +97,7 @@ namespace ASI.Basecode.Services.Services
             return await _roomRepository.GetByIdAsync(roomId, cancellationToken);
         }
 
-        public async Task CreateAsync(Room room, CancellationToken cancellationToken = default)
+        public async Task CreateAsync(Room room, int? userRefId = null, CancellationToken cancellationToken = default)
         {
             await _roomRepository.AddAsync(room, cancellationToken);
 
@@ -105,17 +111,46 @@ namespace ASI.Basecode.Services.Services
                 }
             }
 
+            // Create log entry for room creation
+            await CreateRoomLogAsync(room.RoomId, userRefId, "Created", room.Status ?? "Available", cancellationToken);
+
             await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
 
-        public async Task UpdateAsync(Room room, CancellationToken cancellationToken = default)
+        public async Task UpdateAsync(Room room, int? userRefId = null, CancellationToken cancellationToken = default)
         {
+            var existing = await _roomRepository.GetByIdAsync(room.RoomId, cancellationToken);
+            var oldStatus = existing?.Status;
+            var oldImageUrl = existing?.ImageUrl;
+
             _roomRepository.Update(room);
+
+            // Determine event type based on what changed
+            string eventType = "Updated";
+            if (oldStatus != room.Status)
+            {
+                eventType = room.Status switch
+                {
+                    "Under Maintenance" => "MaintenanceStarted",
+                    "Available" when oldStatus == "Under Maintenance" => "MaintenanceCompleted",
+                    _ => "StatusChanged"
+                };
+            }
+            else if (oldImageUrl != room.ImageUrl)
+            {
+                eventType = "ImageUpdated";
+            }
+
+            await CreateRoomLogAsync(room.RoomId, userRefId, eventType, room.Status, cancellationToken);
+
             await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
 
-        public async Task DeleteAsync(string roomId, CancellationToken cancellationToken = default)
+        public async Task DeleteAsync(string roomId, int? userRefId = null, CancellationToken cancellationToken = default)
         {
+            // Log deletion before actually deleting
+            await CreateRoomLogAsync(roomId, userRefId, "Deleted", "Deleted", cancellationToken);
+
             var context = _unitOfWork.Database;
             await using (var tx = await context.Database.BeginTransactionAsync(cancellationToken))
             {
@@ -139,6 +174,25 @@ namespace ASI.Basecode.Services.Services
                     throw;
                 }
             }
+        }
+
+        // Helper method to create room log entries
+        private async Task CreateRoomLogAsync(string roomId, int? userRefId, string eventType, string currentStatus, CancellationToken cancellationToken)
+        {
+            var logs = await _roomLogRepository.GetRoomLogsAsync(cancellationToken);
+            var nextLogId = logs.Any() ? logs.Max(l => l.RoomLogId) + 1 : 1;
+
+            var log = new RoomLog
+            {
+                RoomLogId = nextLogId,
+                RoomId = roomId,
+                UserRefId = userRefId,
+                EventType = eventType,
+                CurrentStatus = currentStatus,
+                Timestamp = DateTime.UtcNow
+            };
+
+            await _roomLogRepository.AddAsync(log, cancellationToken);
         }
     }
 }

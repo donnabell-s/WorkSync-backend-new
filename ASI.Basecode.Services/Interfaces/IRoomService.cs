@@ -16,8 +16,8 @@ namespace ASI.Basecode.Services.Interfaces
 
         Task<List<Room>> GetRoomsAsync(CancellationToken cancellationToken = default);
         Task<Room> GetByIdAsync(string roomId, CancellationToken cancellationToken = default);
-        Task CreateAsync(Room room, CancellationToken cancellationToken = default);
-        Task UpdateAsync(Room room, CancellationToken cancellationToken = default);
-        Task DeleteAsync(string roomId, CancellationToken cancellationToken = default);
+        Task CreateAsync(Room room, int? userRefId = null, CancellationToken cancellationToken = default);
+        Task UpdateAsync(Room room, int? userRefId = null, CancellationToken cancellationToken = default);
+        Task DeleteAsync(string roomId, int? userRefId = null, CancellationToken cancellationToken = default);
     }
 }
