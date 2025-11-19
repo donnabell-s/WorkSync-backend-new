@@ -142,7 +142,6 @@ namespace ASI.Basecode.WebApp.Controllers
             var newUser = new User
             {
                 Email = model.Email,
-                UserId = System.Guid.NewGuid().ToString(),
                 FirstName = model.FirstName ?? string.Empty,
                 LastName = model.LastName ?? string.Empty,
                 PasswordHash = PasswordManager.EncryptPassword(model.Password),

@@ -23,6 +23,9 @@ namespace ASI.Basecode.WebApp
             this._services.TryAddSingleton<IHttpContextAccessor, HttpContextAccessor>();
             this._services.TryAddSingleton<IActionContextAccessor, ActionContextAccessor>();
 
+            // Register DbContext
+            this._services.AddScoped<WorkSyncDbContext>();
+
             // Common
             this._services.AddScoped<TokenProvider>();
             this._services.TryAddSingleton<TokenProviderOptionsFactory>();
@@ -41,12 +44,14 @@ namespace ASI.Basecode.WebApp
             this._services.AddScoped<IUserPreferenceService, UserPreferenceService>();
             this._services.AddScoped<IBookingLogService, BookingLogService>();
             this._services.AddScoped<IDashboardService, DashboardService>();
+            this._services.AddScoped<IRoomLogService, RoomLogService>();
 
             // Repositories
             this._services.AddScoped<IUserRepository, UserRepository>();
             this._services.AddScoped<IBookingRepository, BookingRepository>();
             this._services.AddScoped<IBookingLogRepository, BookingLogRepository>();
             this._services.AddScoped<IRoomRepository, RoomRepository>();
+            this._services.AddScoped<IRoomLogRepository, RoomLogRepository>();
             this._services.AddScoped<ISessionRepository, SessionRepository>();
             this._services.AddScoped<IUserPreferenceRepository, UserPreferenceRepository>();
             this._services.AddScoped<IDashboardRepository, DashboardRepository>();

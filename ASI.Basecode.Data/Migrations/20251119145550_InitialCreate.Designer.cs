@@ -9,11 +9,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace ASI.Basecode.Data.ASI.Basecode.Data.Migrations.InitFromRepo.Migrations
+namespace ASI.Basecode.Data.Migrations
 {
     [DbContext(typeof(WorkSyncDbContext))]
-    [Migration("20251116115300_InitFromRepo")]
-    partial class InitFromRepo
+    [Migration("20251119145550_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -82,23 +82,44 @@ namespace ASI.Basecode.Data.ASI.Basecode.Data.Migrations.InitFromRepo.Migrations
             modelBuilder.Entity("ASI.Basecode.Data.Models.BookingLog", b =>
                 {
                     b.Property<int>("BookingLogId")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("BookingLogId"));
+
+                    b.Property<int?>("AuthorId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("AuthorName")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<int?>("BookingId")
                         .HasColumnType("int");
 
-                    b.Property<string>("CurrentStatus")
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                    b.Property<string>("BookingIdString")
+                        .HasMaxLength(50)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(50)");
 
-                    b.Property<string>("EventType")
+                    b.Property<string>("BookingName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("ChangeType")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("EventType");
+
+                    b.Property<string>("Message")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)")
+                        .HasColumnName("CurrentStatus");
 
                     b.Property<DateTime?>("Timestamp")
                         .HasColumnType("datetime2");
 
-                    b.Property<int?>("UserRefId")
+                    b.Property<int?>("UserId")
                         .HasColumnType("int");
 
                     b.HasKey("BookingLogId")
@@ -106,7 +127,7 @@ namespace ASI.Basecode.Data.ASI.Basecode.Data.Migrations.InitFromRepo.Migrations
 
                     b.HasIndex("BookingId");
 
-                    b.HasIndex("UserRefId");
+                    b.HasIndex("UserId");
 
                     b.ToTable("BookingLogs", "ws");
                 });
@@ -185,25 +206,44 @@ namespace ASI.Basecode.Data.ASI.Basecode.Data.Migrations.InitFromRepo.Migrations
             modelBuilder.Entity("ASI.Basecode.Data.Models.RoomLog", b =>
                 {
                     b.Property<int>("RoomLogId")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    b.Property<string>("CurrentStatus")
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("RoomLogId"));
+
+                    b.Property<int?>("AuthorId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("AuthorName")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<string>("EventType")
+                    b.Property<string>("ChangeType")
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("nvarchar(100)")
+                        .HasColumnName("EventType");
+
+                    b.Property<string>("Message")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)")
+                        .HasColumnName("CurrentStatus");
 
                     b.Property<string>("RoomId")
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<string>("RoomIdString")
                         .HasMaxLength(50)
                         .IsUnicode(false)
                         .HasColumnType("varchar(50)");
 
+                    b.Property<string>("RoomName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
                     b.Property<DateTime?>("Timestamp")
                         .HasColumnType("datetime2");
 
-                    b.Property<int?>("UserRefId")
+                    b.Property<int?>("UserId")
                         .HasColumnType("int");
 
                     b.HasKey("RoomLogId")
@@ -211,7 +251,7 @@ namespace ASI.Basecode.Data.ASI.Basecode.Data.Migrations.InitFromRepo.Migrations
 
                     b.HasIndex("RoomId");
 
-                    b.HasIndex("UserRefId");
+                    b.HasIndex("UserId");
 
                     b.ToTable("RoomLogs", "ws");
                 });
@@ -283,11 +323,6 @@ namespace ASI.Basecode.Data.ASI.Basecode.Data.Migrations.InitFromRepo.Migrations
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("UserId")
-                        .HasMaxLength(50)
-                        .IsUnicode(false)
-                        .HasColumnType("varchar(50)");
-
                     b.HasKey("Id")
                         .HasName("PK_Users_Id");
 
@@ -354,19 +389,13 @@ namespace ASI.Basecode.Data.ASI.Basecode.Data.Migrations.InitFromRepo.Migrations
 
             modelBuilder.Entity("ASI.Basecode.Data.Models.BookingLog", b =>
                 {
-                    b.HasOne("ASI.Basecode.Data.Models.Booking", "Booking")
+                    b.HasOne("ASI.Basecode.Data.Models.Booking", null)
                         .WithMany("BookingLogs")
-                        .HasForeignKey("BookingId")
-                        .HasConstraintName("FK_BookingLogs_Bookings");
+                        .HasForeignKey("BookingId");
 
-                    b.HasOne("ASI.Basecode.Data.Models.User", "User")
+                    b.HasOne("ASI.Basecode.Data.Models.User", null)
                         .WithMany("BookingLogs")
-                        .HasForeignKey("UserRefId")
-                        .HasConstraintName("FK_BookingLogs_Users_Id");
-
-                    b.Navigation("Booking");
-
-                    b.Navigation("User");
+                        .HasForeignKey("UserId");
                 });
 
             modelBuilder.Entity("ASI.Basecode.Data.Models.RoomAmenity", b =>
@@ -382,19 +411,13 @@ namespace ASI.Basecode.Data.ASI.Basecode.Data.Migrations.InitFromRepo.Migrations
 
             modelBuilder.Entity("ASI.Basecode.Data.Models.RoomLog", b =>
                 {
-                    b.HasOne("ASI.Basecode.Data.Models.Room", "Room")
+                    b.HasOne("ASI.Basecode.Data.Models.Room", null)
                         .WithMany("RoomLogs")
-                        .HasForeignKey("RoomId")
-                        .HasConstraintName("FK_RoomLogs_Rooms");
+                        .HasForeignKey("RoomId");
 
-                    b.HasOne("ASI.Basecode.Data.Models.User", "User")
+                    b.HasOne("ASI.Basecode.Data.Models.User", null)
                         .WithMany("RoomLogs")
-                        .HasForeignKey("UserRefId")
-                        .HasConstraintName("FK_RoomLogs_Users_Id");
-
-                    b.Navigation("Room");
-
-                    b.Navigation("User");
+                        .HasForeignKey("UserId");
                 });
 
             modelBuilder.Entity("ASI.Basecode.Data.Models.Session", b =>

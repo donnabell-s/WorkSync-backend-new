@@ -22,16 +22,19 @@ namespace ASI.Basecode.WebApp.Controllers
     public class BookingsController : ASI.Basecode.WebApp.Mvc.ControllerBase<BookingsController>
     {
         private readonly IBookingService _bookingService;
+        private readonly IBookingLogService _bookingLogService;
 
         public BookingsController(
             IHttpContextAccessor httpContextAccessor,
             ILoggerFactory loggerFactory,
             IConfiguration configuration,
             IMapper mapper,
-            IBookingService bookingService)
+            IBookingService bookingService,
+            IBookingLogService bookingLogService)
             : base(httpContextAccessor, loggerFactory, configuration, mapper)
         {
             _bookingService = bookingService;
+            _bookingLogService = bookingLogService;
         }
 
         // DTOs
@@ -212,7 +215,7 @@ namespace ASI.Basecode.WebApp.Controllers
                 b.ExpectedAttendees,
                 b.CreatedAt,
                 b.UpdatedAt,
-                BookingLogs = b.BookingLogs?.Select(bl => new { bl.BookingLogId, bl.EventType, bl.Timestamp }).ToList(),
+                BookingLogs = b.BookingLogs?.Select(bl => new { bl.BookingLogId, bl.ChangeType, bl.Message, bl.Timestamp }).ToList(),
                 Room = b.Room == null ? null : new
                 {
                     b.Room.RoomId,
@@ -260,7 +263,7 @@ namespace ASI.Basecode.WebApp.Controllers
                 item.ExpectedAttendees,
                 item.CreatedAt,
                 item.UpdatedAt,
-                BookingLogs = item.BookingLogs?.Select(bl => new { bl.BookingLogId, bl.EventType, bl.Timestamp }).ToList(),
+                BookingLogs = item.BookingLogs?.Select(bl => new { bl.BookingLogId, bl.ChangeType, bl.Message, bl.Timestamp }).ToList(),
                 Room = item.Room == null ? null : new
                 {
                     item.Room.RoomId,
@@ -306,38 +309,6 @@ namespace ASI.Basecode.WebApp.Controllers
             {
                 var room = await roomService.GetByIdAsync(request.RoomId, cancellationToken);
                 if (room == null) return NotFound(new { message = "Room not found" });
-
-                if (!string.IsNullOrWhiteSpace(room.OperatingHours))
-                {
-                    RoomOperatingHoursDto ops = null;
-                    try { ops = JsonSerializer.Deserialize<RoomOperatingHoursDto>(room.OperatingHours); } catch { ops = null; }
-
-                    if (ops != null)
-                    {
-                        foreach (var occ in occurrences)
-                        {
-                            var day = occ.start.DayOfWeek;
-                            DayHoursDto dayHours = (day == DayOfWeek.Saturday || day == DayOfWeek.Sunday) ? ops.Weekends : ops.Weekdays;
-                            if (dayHours == null || string.IsNullOrWhiteSpace(dayHours.Open) || string.IsNullOrWhiteSpace(dayHours.Close))
-                            {
-                                return BadRequest(new { message = "Room operating hours are not configured for this day" });
-                            }
-
-                            if (!TimeSpan.TryParse(dayHours.Open, CultureInfo.InvariantCulture, out var openTs) || !TimeSpan.TryParse(dayHours.Close, CultureInfo.InvariantCulture, out var closeTs))
-                            {
-                                return BadRequest(new { message = "Room operating hours time format is invalid" });
-                            }
-
-                            var occStartTs = occ.start.TimeOfDay;
-                            var occEndTs = occ.end.TimeOfDay;
-
-                            if (occStartTs < openTs || occEndTs > closeTs)
-                            {
-                                return BadRequest(new { message = $"Requested time {occ.start} - {occ.end} is outside room operating hours ({dayHours.Open} - {dayHours.Close})" });
-                            }
-                        }
-                    }
-                }
             }
 
             var booking = new Booking
@@ -370,7 +341,7 @@ namespace ASI.Basecode.WebApp.Controllers
                 booking.UserRefId = userRefId;
             }
 
-            await _bookingService.CreateAsync(booking, cancellationToken);
+            await _bookingService.CreateAsync(booking, actorId: userRefId, cancellationToken: cancellationToken);
 
             // Build response DTO to avoid serialization cycles
             var response = new
@@ -477,7 +448,7 @@ namespace ASI.Basecode.WebApp.Controllers
                 booking.UserRefId = request.UserRefId.Value;
             }
 
-            await _bookingService.UpdateAsync(booking, cancellationToken);
+            await _bookingService.UpdateAsync(booking, actorId: userRefId, changeTypeOverride: null, messageOverride: null, cancellationToken: cancellationToken);
 
             return NoContent();
         }
@@ -497,7 +468,8 @@ namespace ASI.Basecode.WebApp.Controllers
                 if (!string.Equals(booking.Status, "Pending", StringComparison.OrdinalIgnoreCase)) return BadRequest("Only pending bookings can be cancelled by the user");
             }
 
-            await _bookingService.DeleteAsync(id, cancellationToken);
+            await _bookingService.DeleteAsync(id, actorId: userRefId, cancellationToken: cancellationToken);
+
             return NoContent();
         }
 
@@ -510,7 +482,8 @@ namespace ASI.Basecode.WebApp.Controllers
             if (booking == null) return NotFound();
             booking.Status = "Approved";
             booking.UpdatedAt = DateTime.UtcNow;
-            await _bookingService.UpdateAsync(booking, cancellationToken);
+            await _bookingService.UpdateAsync(booking, actorId: GetCurrentUserRefId(), changeTypeOverride: "approve", messageOverride: "approved booking", cancellationToken: cancellationToken);
+
             return NoContent();
         }
 
@@ -522,7 +495,8 @@ namespace ASI.Basecode.WebApp.Controllers
             if (booking == null) return NotFound();
             booking.Status = "Declined";
             booking.UpdatedAt = DateTime.UtcNow;
-            await _bookingService.UpdateAsync(booking, cancellationToken);
+            await _bookingService.UpdateAsync(booking, actorId: GetCurrentUserRefId(), changeTypeOverride: "decline", messageOverride: "declined booking", cancellationToken: cancellationToken);
+
             return NoContent();
         }
 

@@ -65,7 +65,15 @@ namespace ASI.Basecode.WebApp.Authentication
 
             if (this._userService != null)
             {
-                user.loginResult = this._userService.AuthenticateUser(username, password, ref userData);
+                // Convert username to integer Id if possible
+                if (int.TryParse(username, out var id))
+                {
+                    user.loginResult = this._userService.AuthenticateUser(id, password, ref userData);
+                }
+                else
+                {
+                    user.loginResult = LoginResult.Failed;
+                }
             }
             else
             {
@@ -90,7 +98,7 @@ namespace ASI.Basecode.WebApp.Authentication
         /// <returns>Instance of ClaimsIdentity</returns>
         public ClaimsIdentity CreateClaimsIdentity(User user)
         {
-            // Build a safe display name: prefer first+last name, fallback to email, then userId
+            // Build a safe display name: prefer first+last name, fallback to email
             var displayName = string.Empty;
             if (!string.IsNullOrWhiteSpace(user?.FirstName) || !string.IsNullOrWhiteSpace(user?.LastName))
             {
@@ -100,19 +108,12 @@ namespace ASI.Basecode.WebApp.Authentication
             {
                 displayName = user.Email;
             }
-            else
-            {
-                displayName = user?.UserId ?? string.Empty;
-            }
 
             var claims = new List<Claim>()
             {
                 // Use numeric DB Id as the NameIdentifier so middleware and controllers can locate numeric user id easily
                 new Claim(ClaimTypes.NameIdentifier, user?.Id.ToString() ?? string.Empty, ClaimValueTypes.Integer, Const.Issuer),
                 new Claim(ClaimTypes.Name, displayName, ClaimValueTypes.String, Const.Issuer),
-
-                // Preserve the original textual UserId (username/email) in a separate claim
-                new Claim("UserId", user.UserId ?? string.Empty, ClaimValueTypes.String, Const.Issuer),
                 new Claim("UserName", displayName, ClaimValueTypes.String, Const.Issuer),
 
                 // Add role claims so JWT contains role information (both ClaimTypes.Role and "role" for compatibility)

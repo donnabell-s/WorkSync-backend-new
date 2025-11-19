@@ -5,17 +5,13 @@ namespace ASI.Basecode.Data.Models;
 
 public partial class User
 {
-    /// New numeric auto-increment primary key
+    // Revert User model to only have auto-increment Id and remove UserId property
     public int Id { get; set; }
-
-    // Retain legacy string UserId for compatibility with mappings and existing code
-    public string UserId { get; set; }
 
     public string Email { get; set; }
 
     public string PasswordHash { get; set; }
 
-    // Use explicit FirstName/LastName properties instead of Fname/Lname
     public string FirstName { get; set; }
 
     public string LastName { get; set; }

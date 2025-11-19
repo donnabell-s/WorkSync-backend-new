@@ -30,7 +30,8 @@ namespace ASI.Basecode.Data.Repositories
 
         public async Task<List<BookingLog>> GetByBookingIdAsync(int bookingId, CancellationToken cancellationToken = default)
         {
-            return await GetDbSet<BookingLog>().Where(b => b.BookingId == bookingId).ToListAsync(cancellationToken);
+            var bookingIdStr = bookingId.ToString();
+            return await GetDbSet<BookingLog>().Where(b => b.BookingIdString == bookingIdStr).ToListAsync(cancellationToken);
         }
 
         public async Task<BookingLog> GetByIdAsync(int bookingLogId, CancellationToken cancellationToken = default)

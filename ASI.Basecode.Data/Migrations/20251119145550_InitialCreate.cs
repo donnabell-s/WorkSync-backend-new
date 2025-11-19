@@ -44,8 +44,7 @@ namespace ASI.Basecode.Data.Migrations
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    UserId = table.Column<string>(type: "varchar(50)", unicode: false, maxLength: 50, nullable: true),
-                    Email = table.Column<string>(type: "varchar(255)", unicode: false, maxLength: 255, nullable: false),
+                    Email = table.Column<string>(type: "nvarchar(450)", nullable: true),
                     PasswordHash = table.Column<string>(type: "varchar(255)", unicode: false, maxLength: 255, nullable: false),
                     Fname = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
                     Lname = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
@@ -118,25 +117,30 @@ namespace ASI.Basecode.Data.Migrations
                 schema: "ws",
                 columns: table => new
                 {
-                    RoomLogId = table.Column<int>(type: "int", nullable: false),
-                    RoomId = table.Column<string>(type: "varchar(50)", unicode: false, maxLength: 50, nullable: true),
-                    UserRefId = table.Column<int>(type: "int", nullable: true),
+                    RoomLogId = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    RoomIdString = table.Column<string>(type: "varchar(50)", unicode: false, maxLength: 50, nullable: true),
+                    RoomName = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    AuthorId = table.Column<int>(type: "int", nullable: true),
+                    AuthorName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
                     EventType = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
-                    CurrentStatus = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
-                    Timestamp = table.Column<DateTime>(type: "datetime2", nullable: true)
+                    CurrentStatus = table.Column<string>(type: "nvarchar(4000)", maxLength: 4000, nullable: true),
+                    Timestamp = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    RoomId = table.Column<string>(type: "varchar(50)", nullable: true),
+                    UserId = table.Column<int>(type: "int", nullable: true)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK__RoomLogs__71A264C4826A7346", x => x.RoomLogId);
                     table.ForeignKey(
-                        name: "FK_RoomLogs_Rooms",
+                        name: "FK_RoomLogs_Rooms_RoomId",
                         column: x => x.RoomId,
                         principalSchema: "ws",
                         principalTable: "Rooms",
                         principalColumn: "RoomId");
                     table.ForeignKey(
-                        name: "FK_RoomLogs_Users_Id",
-                        column: x => x.UserRefId,
+                        name: "FK_RoomLogs_Users_UserId",
+                        column: x => x.UserId,
                         principalSchema: "ws",
                         principalTable: "Users",
                         principalColumn: "Id");
@@ -194,25 +198,30 @@ namespace ASI.Basecode.Data.Migrations
                 schema: "ws",
                 columns: table => new
                 {
-                    BookingLogId = table.Column<int>(type: "int", nullable: false),
-                    BookingId = table.Column<int>(type: "int", nullable: true),
-                    UserRefId = table.Column<int>(type: "int", nullable: true),
+                    BookingLogId = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    BookingIdString = table.Column<string>(type: "varchar(50)", unicode: false, maxLength: 50, nullable: true),
+                    BookingName = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    AuthorId = table.Column<int>(type: "int", nullable: true),
+                    AuthorName = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
                     EventType = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
-                    CurrentStatus = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
-                    Timestamp = table.Column<DateTime>(type: "datetime2", nullable: true)
+                    CurrentStatus = table.Column<string>(type: "nvarchar(4000)", maxLength: 4000, nullable: true),
+                    Timestamp = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    BookingId = table.Column<int>(type: "int", nullable: true),
+                    UserId = table.Column<int>(type: "int", nullable: true)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK__BookingL__D6D56B32605743C8", x => x.BookingLogId);
                     table.ForeignKey(
-                        name: "FK_BookingLogs_Bookings",
+                        name: "FK_BookingLogs_Bookings_BookingId",
                         column: x => x.BookingId,
                         principalSchema: "ws",
                         principalTable: "Bookings",
                         principalColumn: "BookingId");
                     table.ForeignKey(
-                        name: "FK_BookingLogs_Users_Id",
-                        column: x => x.UserRefId,
+                        name: "FK_BookingLogs_Users_UserId",
+                        column: x => x.UserId,
                         principalSchema: "ws",
                         principalTable: "Users",
                         principalColumn: "Id");
@@ -225,10 +234,10 @@ namespace ASI.Basecode.Data.Migrations
                 column: "BookingId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_BookingLogs_UserRefId",
+                name: "IX_BookingLogs_UserId",
                 schema: "ws",
                 table: "BookingLogs",
-                column: "UserRefId");
+                column: "UserId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Bookings_RoomId",
@@ -249,10 +258,10 @@ namespace ASI.Basecode.Data.Migrations
                 column: "RoomId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_RoomLogs_UserRefId",
+                name: "IX_RoomLogs_UserId",
                 schema: "ws",
                 table: "RoomLogs",
-                column: "UserRefId");
+                column: "UserId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Sessions_UserRefId",
@@ -271,7 +280,8 @@ namespace ASI.Basecode.Data.Migrations
                 schema: "ws",
                 table: "Users",
                 column: "Email",
-                unique: true);
+                unique: true,
+                filter: "[Email] IS NOT NULL");
         }
 
         /// <inheritdoc />
