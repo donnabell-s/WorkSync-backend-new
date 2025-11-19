@@ -52,4 +52,56 @@ namespace ASI.Basecode.Data.Models
     {
         public DateTime Date { get; set; }
     }
+
+    /// <summary>
+    /// Complete dashboard data view model with all precomputed metrics.
+    /// This is the main response model for the optimized dashboard endpoint.
+    /// </summary>
+    public class DashboardDataViewModel
+    {
+        /// <summary>
+        /// Summary metrics for the requested date
+        /// </summary>
+        public DashboardSummaryViewModel Summary { get; set; }
+
+        /// <summary>
+        /// Trend data (last 30 days by default)
+        /// </summary>
+        public List<BookingsTrendViewModel> Trends { get; set; }
+
+        /// <summary>
+        /// Peak usage heatmap data
+        /// </summary>
+        public List<PeakUsageViewModel> PeakUsage { get; set; }
+
+        /// <summary>
+        /// When this data was last computed
+        /// </summary>
+        public DateTime LastComputedAt { get; set; }
+
+        /// <summary>
+        /// Whether the data came from cache
+        /// </summary>
+        public bool FromCache { get; set; }
+    }
+
+    /// <summary>
+    /// Trend data response model
+    /// </summary>
+    public class DashboardTrendDataViewModel
+    {
+        public List<BookingsTrendViewModel> Trends { get; set; }
+        public DateTime LastComputedAt { get; set; }
+        public bool FromCache { get; set; }
+    }
+
+    /// <summary>
+    /// Peak usage data response model
+    /// </summary>
+    public class DashboardPeakUsageDataViewModel
+    {
+        public List<PeakUsageViewModel> PeakUsage { get; set; }
+        public DateTime LastComputedAt { get; set; }
+        public bool FromCache { get; set; }
+    }
 }

@@ -32,9 +32,22 @@ namespace ASI.Basecode.Data // Ensure this matches the project root namespace
 
         public virtual DbSet<UserPreference> UserPreferences { get; set; }
 
-        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    // Dashboard summary tables for optimized queries
+    public virtual DbSet<DailySummary> DailySummaries { get; set; }
+
+    public virtual DbSet<HourlyStat> HourlyStats { get; set; }
+
+    public virtual DbSet<MetricsComputationLog> MetricsComputationLogs { get; set; }
+
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        // Only configure if not already configured (allows Startup.cs configuration to take precedence)
+        if (!optionsBuilder.IsConfigured)
+        {
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
-            => optionsBuilder.UseSqlServer("Addr=localhost; database=WorkSync_db; Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True");
+            optionsBuilder.UseSqlServer("Addr=localhost; database=WorkSync_db; Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True");
+        }
+    }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -199,6 +212,91 @@ namespace ASI.Basecode.Data // Ensure this matches the project root namespace
             OnModelCreatingPartial(modelBuilder);
         }
 
-        partial void OnModelCreatingPartial(ModelBuilder modelBuilder);
+            entity.HasIndex(e => e.Email, "UQ__Users__A9D1053413C382AE").IsUnique();
+
+            // Map legacy UserId string column for compatibility
+            entity.Property(e => e.UserId)
+                .HasMaxLength(50)
+                .IsUnicode(false);
+
+            // Map FirstName/LastName properties to existing database columns Fname/Lname for compatibility
+            entity.Property(e => e.FirstName).HasMaxLength(100).HasColumnName("Fname");
+            entity.Property(e => e.LastName).HasMaxLength(100).HasColumnName("Lname");
+            entity.Property(e => e.IsActive).HasDefaultValue(true);
+            entity.Property(e => e.PasswordHash)
+                .IsRequired()
+                .HasMaxLength(255)
+                .IsUnicode(false);
+            entity.Property(e => e.Role)
+                .HasMaxLength(20)
+                .IsUnicode(false);
+        });
+
+        modelBuilder.Entity<UserPreference>(entity =>
+        {
+            entity.HasKey(e => e.PrefId).HasName("PK__UserPref__1F832A20BF4E3852");
+
+            entity.ToTable("UserPreferences", "ws");
+
+            entity.Property<int?>("UserRefId");
+
+            entity.HasOne(d => d.User).WithMany(p => p.UserPreferences)
+                .HasForeignKey("UserRefId")
+                .HasConstraintName("FK_UserPreferences_Users_Id");
+        });
+
+        // Configure DailySummary entity
+        modelBuilder.Entity<DailySummary>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.ToTable("DailySummaries", "ws");
+            
+            entity.Property(e => e.SummaryDate).IsRequired();
+            entity.Property(e => e.LastComputedAt).IsRequired();
+            
+            // Create unique index on SummaryDate for fast lookups
+            entity.HasIndex(e => e.SummaryDate).IsUnique();
+        });
+
+        // Configure HourlyStat entity
+        modelBuilder.Entity<HourlyStat>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.ToTable("HourlyStats", "ws");
+            
+            entity.Property(e => e.StatDate).IsRequired();
+            entity.Property(e => e.Hour).IsRequired();
+            entity.Property(e => e.RoomId).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.RoomName).HasMaxLength(200);
+            entity.Property(e => e.LastComputedAt).IsRequired();
+            
+            // Create composite index for fast queries by date, room, and hour
+            entity.HasIndex(e => new { e.StatDate, e.RoomId, e.Hour }).IsUnique();
+            entity.HasIndex(e => e.StatDate);
+            
+            // Configure relationship with Room
+            entity.HasOne(e => e.Room)
+                .WithMany()
+                .HasForeignKey(e => e.RoomId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Configure MetricsComputationLog entity
+        modelBuilder.Entity<MetricsComputationLog>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.ToTable("MetricsComputationLog", "ws");
+            
+            entity.Property(e => e.MetricType).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.ComputationDate).IsRequired();
+            entity.Property(e => e.StartedAt).IsRequired();
+            entity.Property(e => e.Status).HasMaxLength(50).IsRequired();
+            entity.Property(e => e.ErrorMessage).HasMaxLength(4000);
+            
+            // Create index for querying latest computations
+            entity.HasIndex(e => new { e.MetricType, e.ComputationDate, e.Status });
+        });
+
+        OnModelCreatingPartial(modelBuilder);
     }
 }

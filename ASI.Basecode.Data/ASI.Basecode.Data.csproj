@@ -24,8 +24,4 @@
 		<PackageReference Include="ZXing.Net" Version="0.16.10" />
 	</ItemGroup>
 
-	<ItemGroup>
-	  <Folder Include="Migrations\" />
-	</ItemGroup>
-
 </Project>
