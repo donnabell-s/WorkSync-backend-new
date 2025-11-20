@@ -31,6 +31,7 @@ namespace ASI.Basecode.Data.Models
     /// </summary>
     public class PeakUsageViewModel
     {
+        public string Code { get; set; }
         public string RoomName { get; set; }
         public int Hour { get; set; }
         public double OccupancyRate { get; set; }

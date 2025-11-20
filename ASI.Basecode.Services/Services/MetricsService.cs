@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -30,8 +31,9 @@ namespace ASI.Basecode.Services.Services
         private const string TREND_CACHE_KEY_PREFIX = "Trend_";
         private const string PEAK_USAGE_CACHE_KEY_PREFIX = "PeakUsage_";
         
-        // Cache expiration (5 minutes to align with hosted service interval)
-        private static readonly TimeSpan CacheExpiration = TimeSpan.FromMinutes(5);
+        // Cache expiration (30 seconds to align with hosted service interval for demonstration)
+        // NOTE: Change to TimeSpan.FromMinutes(5) for production use
+        private static readonly TimeSpan CacheExpiration = TimeSpan.FromSeconds(30);
 
         public MetricsService(
             IMetricsRepository metricsRepository,
@@ -55,7 +57,7 @@ namespace ASI.Basecode.Services.Services
             {
                 MetricType = "DailyMetrics",
                 ComputationDate = targetDate,
-                StartedAt = DateTime.UtcNow,
+                StartedAt = DateTime.Now,  // Changed from DateTime.UtcNow
                 Status = "Running"
             };
 
@@ -79,7 +81,7 @@ namespace ASI.Basecode.Services.Services
                 // Update log entry
                 stopwatch.Stop();
                 logEntry.Status = "Success";
-                logEntry.CompletedAt = DateTime.UtcNow;
+                logEntry.CompletedAt = DateTime.Now;  // Changed from DateTime.UtcNow
                 logEntry.DurationMs = stopwatch.ElapsedMilliseconds;
                 logEntry.RecordsProcessed = 1 + hourlyStats.Count;
 
@@ -97,7 +99,7 @@ namespace ASI.Basecode.Services.Services
             {
                 stopwatch.Stop();
                 logEntry.Status = "Failed";
-                logEntry.CompletedAt = DateTime.UtcNow;
+                logEntry.CompletedAt = DateTime.Now;  // Changed from DateTime.UtcNow
                 logEntry.DurationMs = stopwatch.ElapsedMilliseconds;
                 logEntry.ErrorMessage = ex.Message;
 
@@ -147,52 +149,66 @@ namespace ASI.Basecode.Services.Services
 
             var db = _unitOfWork.Database;
 
-            // Count available rooms
+            // Count available rooms (using standardized status: "Available")
             var availableRooms = await db.Set<Room>()
                 .AsNoTracking()
-                .CountAsync(r => r.Status != null && (
-                    r.Status.ToLower() == "active" ||
-                    r.Status.ToLower() == "available"
-                ), cancellationToken);
+                .CountAsync(r => r.Status == "available" || r.Status == "active", cancellationToken);
 
-            // Count maintenance rooms
+            // Count maintenance rooms (using standardized status: "Under Maintenance")
             var maintenanceRooms = await db.Set<Room>()
                 .AsNoTracking()
-                .CountAsync(r => r.Status != null && r.Status.ToLower() == "maintenance", cancellationToken);
+                .CountAsync(r => r.Status == "maintenance", cancellationToken);
 
-            // Count total bookings for the date
-            var totalBookings = await db.Set<Booking>()
+            // Get all approved bookings (including recurring ones)
+            var allBookings = await db.Set<Booking>()
                 .AsNoTracking()
-                .CountAsync(b => b.StartDatetime.HasValue && b.StartDatetime.Value.Date == targetDate, cancellationToken);
+                .Where(b => b.Status == "approved" && b.StartDatetime.HasValue && b.EndDatetime.HasValue)
+                .Select(b => new
+                {
+                    b.BookingId,
+                    b.StartDatetime,
+                    b.EndDatetime,
+                    b.Recurrence
+                })
+                .ToListAsync(cancellationToken);
 
-            // Count completed bookings
-            var completedBookings = await db.Set<Booking>()
-                .AsNoTracking()
-                .CountAsync(b => b.EndDatetime.HasValue && b.EndDatetime.Value.Date == targetDate, cancellationToken);
+            // Expand recurring bookings into individual occurrences for the target date
+            var expandedBookings = new List<(DateTime Start, DateTime End)>();
+            foreach (var booking in allBookings)
+            {
+                var occurrences = GenerateOccurrencesForDate(
+                    booking.StartDatetime.Value, 
+                    booking.EndDatetime.Value, 
+                    booking.Recurrence, 
+                    targetDate);
+                expandedBookings.AddRange(occurrences);
+            }
+
+            // Count total bookings for the date (after expansion)
+            var totalBookings = expandedBookings.Count(b => b.Start.Date == targetDate);
+
+            // Count completed bookings (bookings that have ended)
+            var completedBookings = expandedBookings.Count(b => 
+                b.End.Date == targetDate && b.End <= now);
 
             // Count ongoing bookings (only relevant if computing for today)
             var ongoingBookings = 0;
             if (targetDate.Date == DateTime.Today)
             {
-                ongoingBookings = await db.Set<Booking>()
-                    .AsNoTracking()
-                    .CountAsync(b => b.StartDatetime.HasValue && b.EndDatetime.HasValue &&
-                                    b.StartDatetime.Value <= now && b.EndDatetime.Value >= now &&
-                                    b.Status != null && b.Status.ToLower() != "declined", cancellationToken);
+                ongoingBookings = expandedBookings.Count(b => 
+                    b.Start <= now && b.End >= now);
             }
 
-            // Calculate total booked minutes
-            var totalBookedMinutes = await db.Set<Booking>()
-                .AsNoTracking()
-                .Where(b => b.StartDatetime.HasValue && b.EndDatetime.HasValue &&
-                           b.StartDatetime.Value.Date == targetDate &&
-                           b.Status != null && b.Status.ToLower() != "declined")
-                .SumAsync(b => EF.Functions.DateDiffMinute(b.StartDatetime.Value, b.EndDatetime.Value), cancellationToken);
+            // Calculate total booked minutes (only for bookings on target date)
+            var totalBookedMinutes = expandedBookings
+                .Where(b => b.Start.Date == targetDate)
+                .Sum(b => (int)(b.End - b.Start).TotalMinutes);
 
             // Calculate total available minutes (8 hours per room = 480 minutes)
+            // Only count rooms that are Available or Occupied (exclude Under Maintenance)
             var totalRooms = await db.Set<Room>()
                 .AsNoTracking()
-                .CountAsync(r => r.Status != null && r.Status.ToLower() != "maintenance", cancellationToken);
+                .CountAsync(r => r.Status == "available" || r.Status == "active", cancellationToken);
 
             var totalAvailableMinutes = totalRooms * 480;
             var utilizationRate = totalAvailableMinutes > 0
@@ -210,7 +226,7 @@ namespace ASI.Basecode.Services.Services
                 TotalBookedMinutes = totalBookedMinutes,
                 TotalAvailableMinutes = totalAvailableMinutes,
                 UtilizationRate = utilizationRate,
-                LastComputedAt = DateTime.UtcNow
+                LastComputedAt = DateTime.Now  // Changed from DateTime.UtcNow
             };
         }
 
@@ -222,33 +238,52 @@ namespace ASI.Basecode.Services.Services
             var targetDate = date.Date;
             var db = _unitOfWork.Database;
 
-            // Get all active rooms
+            // Get all available and occupied rooms (exclude Under Maintenance)
             var rooms = await db.Set<Room>()
                 .AsNoTracking()
-                .Where(r => r.Status != null && r.Status.ToLower() != "maintenance")
-                .Select(r => new { r.RoomId, r.Name })
+                .Where(r => r.Status == "available" || r.Status == "active")
+                .Select(r => new { r.RoomId, r.Code, r.Name })
                 .ToListAsync(cancellationToken);
 
-            // Get all bookings for the date
-            var bookings = await db.Set<Booking>()
+            // Get all approved bookings (including recurring)
+            var allBookings = await db.Set<Booking>()
                 .AsNoTracking()
-                .Where(b => b.StartDatetime.HasValue && b.EndDatetime.HasValue &&
-                           b.StartDatetime.Value.Date == targetDate &&
-                           b.Status != null && b.Status.ToLower() != "declined")
+                .Where(b => b.Status == "approved" && 
+                           b.StartDatetime.HasValue && 
+                           b.EndDatetime.HasValue)
                 .Select(b => new
                 {
                     b.RoomId,
-                    StartTime = b.StartDatetime.Value,
-                    EndTime = b.EndDatetime.Value
+                    b.StartDatetime,
+                    b.EndDatetime,
+                    b.Recurrence
                 })
                 .ToListAsync(cancellationToken);
+
+            // Expand recurring bookings by room
+            var bookingsByRoom = new Dictionary<string, List<(DateTime Start, DateTime End)>>();
+            foreach (var booking in allBookings)
+            {
+                if (!bookingsByRoom.ContainsKey(booking.RoomId))
+                    bookingsByRoom[booking.RoomId] = new List<(DateTime, DateTime)>();
+
+                var occurrences = GenerateOccurrencesForDate(
+                    booking.StartDatetime.Value,
+                    booking.EndDatetime.Value,
+                    booking.Recurrence,
+                    targetDate);
+                
+                bookingsByRoom[booking.RoomId].AddRange(occurrences);
+            }
 
             var hourlyStats = new List<HourlyStat>();
 
             // Calculate stats for each room and each hour
             foreach (var room in rooms)
             {
-                var roomBookings = bookings.Where(b => b.RoomId == room.RoomId).ToList();
+                var roomBookings = bookingsByRoom.ContainsKey(room.RoomId) 
+                    ? bookingsByRoom[room.RoomId] 
+                    : new List<(DateTime, DateTime)>();
 
                 for (int hour = 0; hour < 24; hour++)
                 {
@@ -258,8 +293,8 @@ namespace ASI.Basecode.Services.Services
                     // Calculate booked minutes during this hour
                     var bookedMinutes = roomBookings.Sum(b =>
                     {
-                        var overlapStart = b.StartTime < hourStart ? hourStart : b.StartTime;
-                        var overlapEnd = b.EndTime > hourEnd ? hourEnd : b.EndTime;
+                        var overlapStart = b.Item1 < hourStart ? hourStart : b.Item1;
+                        var overlapEnd = b.Item2 > hourEnd ? hourEnd : b.Item2;
 
                         if (overlapStart >= overlapEnd)
                             return 0;
@@ -268,7 +303,7 @@ namespace ASI.Basecode.Services.Services
                     });
 
                     var bookingCount = roomBookings.Count(b =>
-                        b.StartTime < hourEnd && b.EndTime > hourStart);
+                        b.Item1 < hourEnd && b.Item2 > hourStart);
 
                     var occupancyRate = Math.Round((double)bookedMinutes / 60.0 * 100, 2);
 
@@ -277,16 +312,157 @@ namespace ASI.Basecode.Services.Services
                         StatDate = targetDate,
                         Hour = hour,
                         RoomId = room.RoomId,
+                        RoomCode = room.Code,
                         RoomName = room.Name,
                         BookedMinutes = bookedMinutes,
                         OccupancyRate = occupancyRate,
                         BookingCount = bookingCount,
-                        LastComputedAt = DateTime.UtcNow
+                        LastComputedAt = DateTime.Now  // Changed from DateTime.UtcNow
                     });
                 }
             }
 
             return hourlyStats;
+        }
+
+        /// <summary>
+        /// Generate all occurrences of a booking (including recurring ones) that fall on the target date.
+        /// </summary>
+        /// <param name="originalStart">Original booking start datetime</param>
+        /// <param name="originalEnd">Original booking end datetime</param>
+        /// <param name="recurrenceJson">JSON string containing recurrence information</param>
+        /// <param name="targetDate">The date to generate occurrences for</param>
+        /// <returns>List of booking occurrences (start, end) on the target date</returns>
+        private List<(DateTime Start, DateTime End)> GenerateOccurrencesForDate(
+            DateTime originalStart, 
+            DateTime originalEnd, 
+            string recurrenceJson, 
+            DateTime targetDate)
+        {
+            var occurrences = new List<(DateTime, DateTime)>();
+            var targetDateOnly = targetDate.Date;
+
+            // Parse recurrence information
+            RecurrenceInfo recurrence = null;
+            if (!string.IsNullOrWhiteSpace(recurrenceJson))
+            {
+                try
+                {
+                    recurrence = JsonSerializer.Deserialize<RecurrenceInfo>(recurrenceJson);
+                }
+                catch
+                {
+                    // Invalid JSON, treat as non-recurring
+                    recurrence = null;
+                }
+            }
+
+            // If not recurring or no recurrence info, check if original booking falls on target date
+            if (recurrence == null || !recurrence.IsRecurring)
+            {
+                if (originalStart.Date == targetDateOnly || originalEnd.Date == targetDateOnly)
+                {
+                    occurrences.Add((originalStart, originalEnd));
+                }
+                return occurrences;
+            }
+
+            // For recurring bookings, generate occurrences
+            var pattern = recurrence.Pattern?.ToLowerInvariant();
+            var interval = recurrence.Interval ?? 1;
+            var recurrenceEndDate = recurrence.EndDate ?? originalStart.AddMonths(6);
+            
+            // Only generate occurrences up to target date + 1 day
+            var maxDate = targetDateOnly.AddDays(1);
+            if (recurrenceEndDate > maxDate)
+                recurrenceEndDate = maxDate;
+
+            var duration = originalEnd - originalStart;
+            var currentStart = originalStart;
+            int iterationCount = 0;
+            const int maxIterations = 730; // 2 years max to prevent infinite loops
+
+            while (currentStart.Date <= recurrenceEndDate && iterationCount < maxIterations)
+            {
+                iterationCount++;
+                var currentEnd = currentStart + duration;
+
+                // Check if this occurrence falls on the target date
+                if (currentStart.Date == targetDateOnly || currentEnd.Date == targetDateOnly)
+                {
+                    occurrences.Add((currentStart, currentEnd));
+                }
+
+                // If we've passed the target date, stop generating
+                if (currentStart.Date > targetDateOnly)
+                    break;
+
+                // Generate next occurrence based on pattern
+                if (pattern == "daily")
+                {
+                    currentStart = currentStart.AddDays(interval);
+                }
+                else if (pattern == "weekly")
+                {
+                    if (recurrence.DaysOfWeek != null && recurrence.DaysOfWeek.Any())
+                    {
+                        // Find next occurrence on one of the specified days of week
+                        var currentWeekStart = currentStart.Date.AddDays(-(int)currentStart.DayOfWeek);
+                        var foundNext = false;
+
+                        // Check remaining days in current week
+                        foreach (var dayOfWeek in recurrence.DaysOfWeek.OrderBy(d => d))
+                        {
+                            var targetDayOfWeek = dayOfWeek % 7;
+                            var daysToAdd = (targetDayOfWeek - (int)currentStart.DayOfWeek + 7) % 7;
+                            
+                            if (daysToAdd > 0) // Only future days in this week
+                            {
+                                currentStart = currentStart.AddDays(daysToAdd);
+                                foundNext = true;
+                                break;
+                            }
+                        }
+
+                        // If no more days this week, move to next week interval
+                        if (!foundNext)
+                        {
+                            var nextWeekStart = currentWeekStart.AddDays(7 * interval);
+                            var firstDayOfWeek = recurrence.DaysOfWeek.OrderBy(d => d).First() % 7;
+                            var daysFromWeekStart = (firstDayOfWeek - (int)nextWeekStart.DayOfWeek + 7) % 7;
+                            currentStart = nextWeekStart.AddDays(daysFromWeekStart).Add(originalStart.TimeOfDay);
+                        }
+                    }
+                    else
+                    {
+                        // No specific days, just add interval weeks
+                        currentStart = currentStart.AddDays(7 * interval);
+                    }
+                }
+                else if (pattern == "monthly")
+                {
+                    currentStart = currentStart.AddMonths(interval);
+                }
+                else
+                {
+                    // Unknown pattern, stop
+                    break;
+                }
+            }
+
+            return occurrences;
+        }
+
+        /// <summary>
+        /// Internal class for deserializing recurrence JSON
+        /// </summary>
+        private class RecurrenceInfo
+        {
+            public bool IsRecurring { get; set; }
+            public string Pattern { get; set; }
+            public int? Interval { get; set; }
+            public List<int> DaysOfWeek { get; set; }
+            public DateTime? EndDate { get; set; }
         }
 
         #endregion
@@ -330,7 +506,7 @@ namespace ASI.Basecode.Services.Services
                 Summary = MapToSummaryViewModel(dailySummary),
                 Trends = MapToTrendViewModels(trends),
                 PeakUsage = MapToPeakUsageViewModels(hourlyStats),
-                LastComputedAt = dailySummary?.LastComputedAt ?? DateTime.UtcNow,
+                LastComputedAt = dailySummary?.LastComputedAt ?? DateTime.Now,  // Changed from DateTime.UtcNow
                 FromCache = false
             };
 
@@ -362,7 +538,7 @@ namespace ASI.Basecode.Services.Services
             var trendData = new DashboardTrendDataViewModel
             {
                 Trends = MapToTrendViewModels(summaries),
-                LastComputedAt = summaries.Any() ? summaries.Max(s => s.LastComputedAt) : DateTime.UtcNow,
+                LastComputedAt = summaries.Any() ? summaries.Max(s => s.LastComputedAt) : DateTime.Now,  // Changed from DateTime.UtcNow
                 FromCache = false
             };
 
@@ -392,7 +568,7 @@ namespace ASI.Basecode.Services.Services
             var peakUsageData = new DashboardPeakUsageDataViewModel
             {
                 PeakUsage = MapToPeakUsageViewModels(hourlyStats),
-                LastComputedAt = hourlyStats.Any() ? hourlyStats.Max(s => s.LastComputedAt) : DateTime.UtcNow,
+                LastComputedAt = hourlyStats.Any() ? hourlyStats.Max(s => s.LastComputedAt) : DateTime.Now,  // Changed from DateTime.UtcNow
                 FromCache = false
             };
 
@@ -472,6 +648,7 @@ namespace ASI.Basecode.Services.Services
         {
             return stats.Select(s => new PeakUsageViewModel
             {
+                Code = s.RoomCode,
                 RoomName = s.RoomName,
                 Hour = s.Hour,
                 OccupancyRate = s.OccupancyRate

@@ -203,6 +203,10 @@ namespace ASI.Basecode.Data.Migrations
                     b.Property<double>("OccupancyRate")
                         .HasColumnType("float");
 
+                    b.Property<string>("RoomCode")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
                     b.Property<string>("RoomId")
                         .IsRequired()
                         .HasMaxLength(50)

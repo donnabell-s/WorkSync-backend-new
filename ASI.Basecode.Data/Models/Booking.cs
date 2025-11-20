@@ -22,7 +22,7 @@ public partial class Booking
 
     public string Recurrence { get; set; }
 
-    public string Status { get; set; }
+    public string Status { get; set; } // approved, declined
 
     // Expected number of attendees for the booking (optional)
     public int? ExpectedAttendees { get; set; }

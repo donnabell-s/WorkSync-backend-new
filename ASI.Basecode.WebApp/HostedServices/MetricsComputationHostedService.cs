@@ -8,26 +8,14 @@ using System.Threading.Tasks;
 
 namespace ASI.Basecode.WebApp.HostedServices
 {
-    /// <summary>
-    /// Background hosted service that computes dashboard metrics every 5 minutes.
-    /// This service runs continuously in the background and keeps the summary tables
-    /// up-to-date with the latest data. It computes metrics for today and yesterday
-    /// to ensure accurate real-time and historical data.
-    /// 
-    /// Key Features:
-    /// - Runs every 5 minutes automatically
-    /// - Computes metrics for today and yesterday
-    /// - Uses scoped services properly to avoid memory leaks
-    /// - Handles errors gracefully without crashing the application
-    /// - Logs all computation activity for monitoring
-    /// </summary>
+
     public class MetricsComputationHostedService : BackgroundService
     {
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<MetricsComputationHostedService> _logger;
         
-        // Run every 5 minutes
-        private static readonly TimeSpan ComputationInterval = TimeSpan.FromMinutes(5);
+        // Run every 30 seconds (for demonstration purposes)
+        private static readonly TimeSpan ComputationInterval = TimeSpan.FromSeconds(10);
 
         public MetricsComputationHostedService(
             IServiceProvider serviceProvider,
@@ -71,10 +59,6 @@ namespace ASI.Basecode.WebApp.HostedServices
             _logger.LogInformation("MetricsComputationHostedService has stopped.");
         }
 
-        /// <summary>
-        /// Compute metrics for today and yesterday.
-        /// Uses a scoped service to ensure proper disposal of DbContext.
-        /// </summary>
         private async Task ComputeMetricsAsync(CancellationToken cancellationToken)
         {
             _logger.LogInformation("Starting scheduled metrics computation at {Time}", DateTime.UtcNow);

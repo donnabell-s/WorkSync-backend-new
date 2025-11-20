@@ -40,6 +40,12 @@ namespace ASI.Basecode.Data.Models
         public string RoomId { get; set; }
 
         /// <summary>
+        /// Room code (denormalized for faster queries and frontend display)
+        /// </summary>
+        [MaxLength(50)]
+        public string RoomCode { get; set; }
+
+        /// <summary>
         /// Room name (denormalized for faster queries)
         /// </summary>
         [MaxLength(200)]
