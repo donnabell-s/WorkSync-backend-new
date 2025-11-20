@@ -528,5 +528,31 @@ namespace ASI.Basecode.WebApp.Controllers
 
             return Ok(roomBookings);
         }
+
+        // New endpoint: returns bookings' start and end datetimes for a specified room
+        /// <summary>
+        /// Returns all bookings for the given room, exposing only startDateTime and endDateTime.
+        /// GET /api/bookings/datetimes/{roomId}
+        /// </summary>
+        [HttpGet("{roomId}")]
+        public async Task<IActionResult> Datetimes([FromRoute] string roomId, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(roomId))
+                return BadRequest(new { message = "roomId is required in the route" });
+
+            var items = await _bookingService.GetBookingsAsync(cancellationToken);
+
+            var results = items
+                .Where(b => string.Equals(b.RoomId, roomId, StringComparison.OrdinalIgnoreCase) && b.StartDatetime != null && b.EndDatetime != null)
+                .Select(b => new
+                {
+                    startDateTime = b.StartDatetime,
+                    endDateTime = b.EndDatetime
+                })
+                .OrderBy(x => x.startDateTime)
+                .ToList();
+
+            return Ok(results);
+        }
     }
 }
