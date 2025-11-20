@@ -575,19 +575,146 @@ namespace ASI.Basecode.WebApp.Controllers
                 _logger?.LogWarning(ex, "Failed to compute booking status counts for room {RoomId}", roomId);
             }
 
-            // Filter to bookings that have approved status and non-null datetimes
-            var query = baseQuery.Where(b => b.StartDatetime != null && b.EndDatetime != null && (b.Status ?? string.Empty).ToLower() == "approved");
-
-            var results = await query
-                .Select(b => new
-                {
-                    startDateTime = b.StartDatetime,
-                    endDateTime = b.EndDatetime
-                })
-                .OrderBy(x => x.startDateTime)
+            // Load approved bookings from DB
+            var dbBookings = await baseQuery
+                .Where(b => b.StartDatetime != null && b.EndDatetime != null && (b.Status ?? string.Empty).ToLower() == "approved")
+                .Select(b => new { b.BookingId, b.StartDatetime, b.EndDatetime, b.Recurrence })
                 .ToListAsync(cancellationToken);
 
-            return Ok(results);
+            // occurrences now include recurrence string and normalized parsed JSON
+            var occurrences = new List<(DateTime start, DateTime end, string recurrenceRaw, string recurrenceJson)>();
+            var jsonOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+
+            foreach (var b in dbBookings)
+            {
+                if (!b.StartDatetime.HasValue || !b.EndDatetime.HasValue) continue;
+                var start = b.StartDatetime.Value;
+                var end = b.EndDatetime.Value;
+
+                if (string.IsNullOrWhiteSpace(b.Recurrence))
+                {
+                    occurrences.Add((start, end, null, null));
+                    continue;
+                }
+
+                // recurrence may be double-encoded (a JSON string containing a JSON string). Try to unwrap.
+                string recJsonRaw = b.Recurrence.Trim();
+                string candidate = recJsonRaw;
+                if ((candidate.StartsWith("\"") && candidate.EndsWith("\"")) || (candidate.StartsWith("\'") && candidate.EndsWith("\'")))
+                {
+                    try
+                    {
+                        candidate = JsonSerializer.Deserialize<string>(candidate);
+                    }
+                    catch
+                    {
+                        // ignore and keep original
+                    }
+                }
+
+                RecurrenceDto rec = null;
+                try
+                {
+                    rec = JsonSerializer.Deserialize<RecurrenceDto>(candidate, jsonOptions);
+                }
+                catch
+                {
+                    rec = null;
+                }
+
+                // Prepare normalized recurrence JSON if parsed
+                string normalizedRecJson = null;
+                if (rec != null)
+                {
+                    try { normalizedRecJson = JsonSerializer.Serialize(rec); } catch { normalizedRecJson = null; }
+                }
+
+                if (rec == null || !rec.IsRecurring)
+                {
+                    occurrences.Add((start, end, recJsonRaw, normalizedRecJson));
+                    continue;
+                }
+
+                var pattern = (rec.Pattern ?? string.Empty).ToLowerInvariant();
+                var interval = rec.Interval.GetValueOrDefault(1);
+                var recEnd = rec.EndDate ?? start.AddMonths(6);
+
+                if (pattern == "daily")
+                {
+                    var curStart = start;
+                    var curEnd = end;
+                    int cap = 0;
+                    while (curStart <= recEnd && cap < 365)
+                    {
+                        occurrences.Add((curStart, curEnd, recJsonRaw, normalizedRecJson));
+                        curStart = curStart.AddDays(interval);
+                        curEnd = curEnd.AddDays(interval);
+                        cap++;
+                    }
+                }
+                else if (pattern == "weekly")
+                {
+                    var days = rec.DaysOfWeek ?? new List<int> { (int)start.DayOfWeek };
+                    var normDays = days.Select(d => ((d % 7) + 7) % 7).Distinct().OrderBy(x => x).ToList();
+
+                    var weekStart = start.Date;
+                    int occurrencesCap = 0;
+                    while (weekStart <= recEnd && occurrencesCap < 365)
+                    {
+                        foreach (var d in normDays)
+                        {
+                            var dayDiff = (d - (int)weekStart.DayOfWeek + 7) % 7;
+                            var occStart = weekStart.AddDays(dayDiff).Add(start.TimeOfDay);
+                            var occEnd = occStart + (end - start);
+                            if (occStart < start) continue;
+                            if (occStart <= recEnd)
+                            {
+                                occurrences.Add((occStart, occEnd, recJsonRaw, normalizedRecJson));
+                                occurrencesCap++;
+                            }
+                        }
+                        weekStart = weekStart.AddDays(7 * interval);
+                    }
+                }
+                else if (pattern == "monthly")
+                {
+                    var curStart = start;
+                    var curEnd = end;
+                    int cap = 0;
+                    while (curStart <= recEnd && cap < 365)
+                    {
+                        occurrences.Add((curStart, curEnd, recJsonRaw, normalizedRecJson));
+                        curStart = curStart.AddMonths(interval);
+                        curEnd = curEnd.AddMonths(interval);
+                        cap++;
+                    }
+                }
+                else
+                {
+                    occurrences.Add((start, end, recJsonRaw, normalizedRecJson));
+                }
+            }
+
+            var ordered = occurrences
+                .OrderBy(o => o.start)
+                .Select(o => new { startDateTime = o.start, endDateTime = o.end, recurrence = o.recurrenceRaw, recurrenceJson = o.recurrenceJson })
+                .ToList();
+
+            return Ok(ordered);
+        }
+
+        // Debug endpoint: return raw approved bookings from DB including recurrence string
+        [HttpGet("raw/{roomId}")]
+        public async Task<IActionResult> DatetimesRaw([FromRoute] string roomId, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(roomId)) return BadRequest(new { message = "roomId is required" });
+            var roomIdNorm = roomId.ToLowerInvariant();
+            var raw = await _bookingService.GetBookings()
+                .Where(b => b.RoomId != null && b.RoomId.ToLower() == roomIdNorm)
+                .Where(b => b.StartDatetime != null && b.EndDatetime != null && (b.Status ?? string.Empty).ToLower() == "approved")
+                .Select(b => new { b.BookingId, b.StartDatetime, b.EndDatetime, b.Recurrence, b.Status })
+                .ToListAsync(cancellationToken);
+            return Ok(raw);
         }
     }
 }
