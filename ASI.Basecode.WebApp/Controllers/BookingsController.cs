@@ -14,6 +14,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
 using System.Globalization;
+using Microsoft.EntityFrameworkCore;
 
 namespace ASI.Basecode.WebApp.Controllers
 {
@@ -22,16 +23,19 @@ namespace ASI.Basecode.WebApp.Controllers
     public class BookingsController : ASI.Basecode.WebApp.Mvc.ControllerBase<BookingsController>
     {
         private readonly IBookingService _bookingService;
+        private readonly IBookingLogService _bookingLogService;
 
         public BookingsController(
             IHttpContextAccessor httpContextAccessor,
             ILoggerFactory loggerFactory,
             IConfiguration configuration,
             IMapper mapper,
-            IBookingService bookingService)
+            IBookingService bookingService,
+            IBookingLogService bookingLogService)
             : base(httpContextAccessor, loggerFactory, configuration, mapper)
         {
             _bookingService = bookingService;
+            _bookingLogService = bookingLogService;
         }
 
         // DTOs
@@ -212,7 +216,7 @@ namespace ASI.Basecode.WebApp.Controllers
                 b.ExpectedAttendees,
                 b.CreatedAt,
                 b.UpdatedAt,
-                BookingLogs = b.BookingLogs?.Select(bl => new { bl.BookingLogId, bl.EventType, bl.Timestamp }).ToList(),
+                BookingLogs = b.BookingLogs?.Select(bl => new { bl.BookingLogId, bl.ChangeType, bl.Message, bl.Timestamp }).ToList(),
                 Room = b.Room == null ? null : new
                 {
                     b.Room.RoomId,
@@ -260,7 +264,7 @@ namespace ASI.Basecode.WebApp.Controllers
                 item.ExpectedAttendees,
                 item.CreatedAt,
                 item.UpdatedAt,
-                BookingLogs = item.BookingLogs?.Select(bl => new { bl.BookingLogId, bl.EventType, bl.Timestamp }).ToList(),
+                BookingLogs = item.BookingLogs?.Select(bl => new { bl.BookingLogId, bl.ChangeType, bl.Message, bl.Timestamp }).ToList(),
                 Room = item.Room == null ? null : new
                 {
                     item.Room.RoomId,
@@ -306,38 +310,6 @@ namespace ASI.Basecode.WebApp.Controllers
             {
                 var room = await roomService.GetByIdAsync(request.RoomId, cancellationToken);
                 if (room == null) return NotFound(new { message = "Room not found" });
-
-                if (!string.IsNullOrWhiteSpace(room.OperatingHours))
-                {
-                    RoomOperatingHoursDto ops = null;
-                    try { ops = JsonSerializer.Deserialize<RoomOperatingHoursDto>(room.OperatingHours); } catch { ops = null; }
-
-                    if (ops != null)
-                    {
-                        foreach (var occ in occurrences)
-                        {
-                            var day = occ.start.DayOfWeek;
-                            DayHoursDto dayHours = (day == DayOfWeek.Saturday || day == DayOfWeek.Sunday) ? ops.Weekends : ops.Weekdays;
-                            if (dayHours == null || string.IsNullOrWhiteSpace(dayHours.Open) || string.IsNullOrWhiteSpace(dayHours.Close))
-                            {
-                                return BadRequest(new { message = "Room operating hours are not configured for this day" });
-                            }
-
-                            if (!TimeSpan.TryParse(dayHours.Open, CultureInfo.InvariantCulture, out var openTs) || !TimeSpan.TryParse(dayHours.Close, CultureInfo.InvariantCulture, out var closeTs))
-                            {
-                                return BadRequest(new { message = "Room operating hours time format is invalid" });
-                            }
-
-                            var occStartTs = occ.start.TimeOfDay;
-                            var occEndTs = occ.end.TimeOfDay;
-
-                            if (occStartTs < openTs || occEndTs > closeTs)
-                            {
-                                return BadRequest(new { message = $"Requested time {occ.start} - {occ.end} is outside room operating hours ({dayHours.Open} - {dayHours.Close})" });
-                            }
-                        }
-                    }
-                }
             }
 
             var booking = new Booking
@@ -370,7 +342,7 @@ namespace ASI.Basecode.WebApp.Controllers
                 booking.UserRefId = userRefId;
             }
 
-            await _bookingService.CreateAsync(booking, cancellationToken);
+            await _bookingService.CreateAsync(booking, actorId: userRefId, cancellationToken: cancellationToken);
 
             // Build response DTO to avoid serialization cycles
             var response = new
@@ -477,7 +449,7 @@ namespace ASI.Basecode.WebApp.Controllers
                 booking.UserRefId = request.UserRefId.Value;
             }
 
-            await _bookingService.UpdateAsync(booking, cancellationToken);
+            await _bookingService.UpdateAsync(booking, actorId: userRefId, changeTypeOverride: null, messageOverride: null, cancellationToken: cancellationToken);
 
             return NoContent();
         }
@@ -497,7 +469,8 @@ namespace ASI.Basecode.WebApp.Controllers
                 if (!string.Equals(booking.Status, "Pending", StringComparison.OrdinalIgnoreCase)) return BadRequest("Only pending bookings can be cancelled by the user");
             }
 
-            await _bookingService.DeleteAsync(id, cancellationToken);
+            await _bookingService.DeleteAsync(id, actorId: userRefId, cancellationToken: cancellationToken);
+
             return NoContent();
         }
 
@@ -510,7 +483,8 @@ namespace ASI.Basecode.WebApp.Controllers
             if (booking == null) return NotFound();
             booking.Status = "Approved";
             booking.UpdatedAt = DateTime.UtcNow;
-            await _bookingService.UpdateAsync(booking, cancellationToken);
+            await _bookingService.UpdateAsync(booking, actorId: GetCurrentUserRefId(), changeTypeOverride: "approve", messageOverride: "approved booking", cancellationToken: cancellationToken);
+
             return NoContent();
         }
 
@@ -522,7 +496,8 @@ namespace ASI.Basecode.WebApp.Controllers
             if (booking == null) return NotFound();
             booking.Status = "Declined";
             booking.UpdatedAt = DateTime.UtcNow;
-            await _bookingService.UpdateAsync(booking, cancellationToken);
+            await _bookingService.UpdateAsync(booking, actorId: GetCurrentUserRefId(), changeTypeOverride: "decline", messageOverride: "declined booking", cancellationToken: cancellationToken);
+
             return NoContent();
         }
 
@@ -553,6 +528,66 @@ namespace ASI.Basecode.WebApp.Controllers
                 .ToList();
 
             return Ok(roomBookings);
+        }
+
+        // New endpoint: returns bookings' start and end datetimes for a specified room
+        /// <summary>
+        /// Returns all approved bookings for the given room, exposing only startDateTime and endDateTime.
+        /// GET /api/bookings/datetimes/{roomId}
+        /// </summary>
+        [HttpGet("{roomId}")]
+        public async Task<IActionResult> Datetimes([FromRoute] string roomId, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(roomId))
+                return BadRequest(new { message = "roomId is required in the route" });
+
+            // normalize roomId for comparison in EF-translatable way
+            var roomIdNorm = roomId.ToLowerInvariant();
+
+            // Use IQueryable from service to ensure server-side filtering
+            var baseQuery = _bookingService.GetBookings()
+                .Where(b => b.RoomId != null && b.RoomId.ToLower() == roomIdNorm);
+
+            // Compute status counts for diagnostics (runs on DB)
+            try
+            {
+                var statusCounts = await baseQuery
+                    .GroupBy(b => (b.Status ?? string.Empty).ToLower())
+                    .Select(g => new { Status = g.Key, Count = g.Count() })
+                    .ToListAsync(cancellationToken);
+
+                if (_logger != null)
+                {
+                    var countsJson = System.Text.Json.JsonSerializer.Serialize(statusCounts);
+                    _logger.LogInformation("Booking status counts for room {RoomId}: {Counts}", roomId, countsJson);
+                }
+
+                // Also expose counts in a response header for debugging (as JSON)
+                try
+                {
+                    Response.Headers["X-Booking-Status-Counts"] = System.Text.Json.JsonSerializer.Serialize(statusCounts);
+                }
+                catch { /* best-effort */ }
+            }
+            catch (Exception ex)
+            {
+                // Don't fail the endpoint if counts query fails; log and continue
+                _logger?.LogWarning(ex, "Failed to compute booking status counts for room {RoomId}", roomId);
+            }
+
+            // Filter to bookings that have approved status and non-null datetimes
+            var query = baseQuery.Where(b => b.StartDatetime != null && b.EndDatetime != null && (b.Status ?? string.Empty).ToLower() == "approved");
+
+            var results = await query
+                .Select(b => new
+                {
+                    startDateTime = b.StartDatetime,
+                    endDateTime = b.EndDatetime
+                })
+                .OrderBy(x => x.startDateTime)
+                .ToListAsync(cancellationToken);
+
+            return Ok(results);
         }
     }
 }

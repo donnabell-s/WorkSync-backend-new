@@ -5,7 +5,7 @@ namespace ASI.Basecode.Services.Interfaces
 {
     public interface IUserService
     {
-        LoginResult AuthenticateUser(string userid, string password, ref User user);
+        LoginResult AuthenticateUser(int id, string password, ref User user);
         LoginResult AuthenticateUserByEmail(string email, string password, ref User user);
     }
 }

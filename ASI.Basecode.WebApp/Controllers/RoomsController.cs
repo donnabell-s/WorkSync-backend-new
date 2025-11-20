@@ -14,6 +14,8 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using System.IO;
 using Microsoft.AspNetCore.Hosting;
+using ASI.Basecode.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace ASI.Basecode.WebApp.Controllers
 {
@@ -23,6 +25,7 @@ namespace ASI.Basecode.WebApp.Controllers
     {
         private readonly IRoomService _roomService;
         private readonly IWebHostEnvironment _env;
+        private readonly WorkSyncDbContext _db;
 
         public RoomsController(
             IHttpContextAccessor httpContextAccessor,
@@ -30,11 +33,26 @@ namespace ASI.Basecode.WebApp.Controllers
             IConfiguration configuration,
             IMapper mapper,
             IRoomService roomService,
-            IWebHostEnvironment env)
+            IWebHostEnvironment env,
+            WorkSyncDbContext db)
             : base(httpContextAccessor, loggerFactory, configuration, mapper)
         {
             _roomService = roomService;
             _env = env;
+            _db = db;
+        }
+
+        // DTOs
+        public class OperatingHoursDto
+        {
+            public DayHoursDto Weekdays { get; set; }
+            public DayHoursDto Weekends { get; set; }
+        }
+
+        public class DayHoursDto
+        {
+            public string Open { get; set; }
+            public string Close { get; set; }
         }
 
         // Test endpoint to verify authentication/token and claims without role authorization
@@ -143,6 +161,7 @@ namespace ASI.Basecode.WebApp.Controllers
         [Consumes("multipart/form-data")]
         public async Task<IActionResult> Post([FromForm] CreateRoomRequest request, CancellationToken cancellationToken)
         {
+            Console.WriteLine("[RoomsController] POST endpoint invoked.");
             return await CreateRoomInternal(request, cancellationToken);
         }
 
@@ -171,11 +190,27 @@ namespace ASI.Basecode.WebApp.Controllers
                 Level = request.Level,
                 SizeLabel = request.SizeLabel,
                 Status = request.Status,
-                OperatingHours = request.OperatingHours == null ? null : JsonSerializer.Serialize(request.OperatingHours),
+                OperatingHours = null, // Will set below
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow,
                 RoomAmenities = new List<RoomAmenity>(),
             };
+
+            // Deserialize OperatingHours
+            if (!string.IsNullOrWhiteSpace(request.OperatingHours))
+            {
+                try
+                {
+                    var options = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                    var ops = System.Text.Json.JsonSerializer.Deserialize<OperatingHoursDto>(request.OperatingHours, options);
+                    room.OperatingHours = System.Text.Json.JsonSerializer.Serialize(ops);
+                }
+                catch
+                {
+                    // Invalid JSON, set to null
+                    room.OperatingHours = null;
+                }
+            }
 
             if (request.Amenities != null)
             {
@@ -190,7 +225,20 @@ namespace ASI.Basecode.WebApp.Controllers
 
             try
             {
-                await _roomService.CreateAsync(room, cancellationToken);
+                // get actor id
+                int? authorId = null;
+                var actor = HttpContext.User;
+                if (actor != null && actor.Identity.IsAuthenticated)
+                {
+                    var claim = actor.Claims.FirstOrDefault(c => c.Type.Equals("UserRefId", StringComparison.OrdinalIgnoreCase)
+                                                                || c.Type.Equals("UserId", StringComparison.OrdinalIgnoreCase)
+                                                                || c.Type.Equals(System.Security.Claims.ClaimTypes.NameIdentifier, StringComparison.OrdinalIgnoreCase)
+                                                                || c.Type.Equals("sub", StringComparison.OrdinalIgnoreCase)
+                                                                || c.Type.Equals("id", StringComparison.OrdinalIgnoreCase));
+                    if (claim != null && int.TryParse(claim.Value, out var val)) authorId = val;
+                }
+
+                await _roomService.CreateAsync(room, actorId: authorId, cancellationToken: cancellationToken);
             }
             catch (Exception ex)
             {
@@ -229,59 +277,85 @@ namespace ASI.Basecode.WebApp.Controllers
         [Consumes("multipart/form-data")]
         public async Task<IActionResult> Put(string id, [FromForm] CreateRoomRequest request, CancellationToken cancellationToken)
         {
-            return await UpdateRoomInternal(id, request, cancellationToken);
-        }
-
-        [HttpPut("{id}")]
-        [Consumes("application/json")]
-        public async Task<IActionResult> PutJson(string id, [FromBody] CreateRoomRequest request, CancellationToken cancellationToken)
-        {
+            Console.WriteLine($"[RoomsController] PUT endpoint invoked for RoomId={id}.");
             return await UpdateRoomInternal(id, request, cancellationToken);
         }
 
         private async Task<IActionResult> UpdateRoomInternal(string id, CreateRoomRequest request, CancellationToken cancellationToken)
         {
-            if (request == null) return BadRequest();
+            if (request == null) return BadRequest(new { message = "Request payload missing" });
 
-            var room = await _roomService.GetByIdAsync(id, cancellationToken);
-            if (room == null) return NotFound();
+            var roomOriginal = await _roomService.GetByIdAsync(id, cancellationToken);
+            if (roomOriginal == null) return NotFound(new { message = "Room not found" });
 
-            room.Name = request.Name ?? room.Name;
-            room.Code = request.Code ?? room.Code;
-            room.Seats = request.Seats ?? room.Seats;
-            room.Location = request.Location ?? room.Location;
-            room.Level = request.Level ?? room.Level;
-            room.SizeLabel = request.SizeLabel ?? room.SizeLabel;
-            room.Status = request.Status ?? room.Status;
-            room.OperatingHours = request.OperatingHours == null ? room.OperatingHours : JsonSerializer.Serialize(request.OperatingHours);
-            room.UpdatedAt = DateTime.UtcNow;
-
-            await ProcessImageForRoom(request, room, cancellationToken);
-
-            room.RoomAmenities = room.RoomAmenities ?? new List<RoomAmenity>();
-            room.RoomAmenities.Clear();
-            if (request.Amenities != null)
+            var updated = new Room
             {
-                foreach (var a in request.Amenities.Distinct())
+                RoomId = roomOriginal.RoomId,
+                Name = string.IsNullOrWhiteSpace(request.Name) ? roomOriginal.Name : request.Name,
+                Code = string.IsNullOrWhiteSpace(request.Code) ? roomOriginal.Code : request.Code,
+                Seats = request.Seats ?? roomOriginal.Seats,
+                Location = string.IsNullOrWhiteSpace(request.Location) ? roomOriginal.Location : request.Location,
+                Level = string.IsNullOrWhiteSpace(request.Level) ? roomOriginal.Level : request.Level,
+                SizeLabel = string.IsNullOrWhiteSpace(request.SizeLabel) ? roomOriginal.SizeLabel : request.SizeLabel,
+                Status = string.IsNullOrWhiteSpace(request.Status) ? roomOriginal.Status : request.Status,
+                OperatingHours = null, // Will set below
+                ImageUrl = roomOriginal.ImageUrl,
+                UpdatedAt = DateTime.UtcNow,
+                RoomAmenities = new List<RoomAmenity>()
+            };
+
+            // Deserialize OperatingHours
+            if (!string.IsNullOrWhiteSpace(request.OperatingHours))
+            {
+                try
                 {
-                    room.RoomAmenities.Add(new RoomAmenity { RoomId = room.RoomId, Amenity = a });
+                    var options = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                    var ops = System.Text.Json.JsonSerializer.Deserialize<OperatingHoursDto>(request.OperatingHours, options);
+                    updated.OperatingHours = System.Text.Json.JsonSerializer.Serialize(ops);
+                }
+                catch
+                {
+                    // Keep original if invalid
+                    updated.OperatingHours = roomOriginal.OperatingHours;
+                }
+            }
+            else
+            {
+                updated.OperatingHours = roomOriginal.OperatingHours;
+            }
+
+            // Image processing into detached instance
+            await ProcessImageForRoom(request, updated, cancellationToken);
+
+            if (request.Amenities != null && request.Amenities.Count > 0)
+            {
+                foreach (var a in request.Amenities.Where(x => !string.IsNullOrWhiteSpace(x)).Distinct())
+                {
+                    updated.RoomAmenities.Add(new RoomAmenity { RoomId = updated.RoomId, Amenity = a.Trim() });
                 }
             }
 
             try
             {
-                await _roomService.UpdateAsync(room, cancellationToken);
+                int? authorId = null;
+                var actor = HttpContext.User;
+                if (actor?.Identity?.IsAuthenticated == true)
+                {
+                    var claim = actor.Claims.FirstOrDefault(c => c.Type.Equals("UserRefId", StringComparison.OrdinalIgnoreCase)
+                                                                || c.Type.Equals("UserId", StringComparison.OrdinalIgnoreCase)
+                                                                || c.Type.Equals(System.Security.Claims.ClaimTypes.NameIdentifier, StringComparison.OrdinalIgnoreCase)
+                                                                || c.Type.Equals("sub", StringComparison.OrdinalIgnoreCase)
+                                                                || c.Type.Equals("id", StringComparison.OrdinalIgnoreCase));
+                    if (claim != null && int.TryParse(claim.Value, out var val)) authorId = val;
+                }
+
+                await _roomService.UpdateAsync(updated, actorId: authorId, cancellationToken: cancellationToken);
             }
             catch (Exception ex)
             {
-                var list = new List<string>();
-                var e = ex;
-                while (e != null)
-                {
-                    list.Add(e.Message);
-                    e = e.InnerException;
-                }
-                return StatusCode(500, new { error = "Update room failed", details = list });
+                var messages = new List<string>();
+                for (var e = ex; e != null; e = e.InnerException) messages.Add(e.Message);
+                return StatusCode(500, new { error = "Update room failed", details = messages });
             }
 
             return NoContent();
@@ -290,9 +364,28 @@ namespace ASI.Basecode.WebApp.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(string id, CancellationToken cancellationToken)
         {
+            Console.WriteLine($"[RoomsController] DELETE endpoint invoked for RoomId={id}.");
+            var room = await _roomService.GetByIdAsync(id, cancellationToken);
+            if (room == null) return NotFound();
+
             try
             {
-                await _roomService.DeleteAsync(id, cancellationToken);
+                // actor id
+                int? authorId = null;
+                var actor = HttpContext.User;
+                if (actor != null && actor.Identity.IsAuthenticated)
+                {
+                    var claim = actor.Claims.FirstOrDefault(c => c.Type.Equals("UserRefId", StringComparison.OrdinalIgnoreCase)
+                                                                || c.Type.Equals("UserId", StringComparison.OrdinalIgnoreCase)
+                                                                || c.Type.Equals(System.Security.Claims.ClaimTypes.NameIdentifier, StringComparison.OrdinalIgnoreCase)
+                                                                || c.Type.Equals("sub", StringComparison.OrdinalIgnoreCase)
+                                                                || c.Type.Equals("id", StringComparison.OrdinalIgnoreCase));
+                    if (claim != null && int.TryParse(claim.Value, out var val)) authorId = val;
+                }
+
+                Console.WriteLine($"[RoomsController] DELETE operation: AuthorId={authorId}.");
+                await _roomService.DeleteAsync(id, actorId: authorId, cancellationToken: cancellationToken);
+
                 return NoContent();
             }
             catch (Exception ex)
@@ -304,6 +397,7 @@ namespace ASI.Basecode.WebApp.Controllers
                     list.Add(e.Message);
                     e = e.InnerException;
                 }
+                Console.WriteLine($"[RoomsController] DELETE operation failed: {string.Join(", ", list)}");
                 return StatusCode(500, new { error = "Delete room failed", details = list });
             }
         }
@@ -417,34 +511,22 @@ namespace ASI.Basecode.WebApp.Controllers
                 }
             }
         }
-    }
 
-    // DTO for creating a room from Admin / SuperAdmin UI
-    public class CreateRoomRequest
-    {
-        public string Name { get; set; }
-        public string Code { get; set; } // Room number
-        public string Location { get; set; }
-        public string Level { get; set; }
-        public string SizeLabel { get; set; } // Small, Medium, Large
-        public int? Seats { get; set; }
-        public string Status { get; set; } // Available, Occupied, Under Maintenance
-        public OperatingHoursDto OperatingHours { get; set; }
-        public List<string> Amenities { get; set; }
-        public string ImageUrl { get; set; }
-        // Optional uploaded image when content-type is multipart/form-data
-        public IFormFile Image { get; set; }
-    }
-
-    public class OperatingHoursDto
-    {
-        public DayHoursDto Weekdays { get; set; }
-        public DayHoursDto Weekends { get; set; }
-    }
-
-    public class DayHoursDto
-    {
-        public string Open { get; set; }
-        public string Close { get; set; }
+        // DTO for creating a room from Admin / SuperAdmin UI
+        public class CreateRoomRequest
+        {
+            public string Name { get; set; }
+            public string Code { get; set; } // Room number
+            public string Location { get; set; }
+            public string Level { get; set; }
+            public string SizeLabel { get; set; } // Small, Medium, Large
+            public int? Seats { get; set; }
+            public string Status { get; set; } // Available, Occupied, Under Maintenance
+            public string OperatingHours { get; set; } // JSON string
+            public List<string> Amenities { get; set; }
+            public string ImageUrl { get; set; }
+            // Optional uploaded image when content-type is multipart/form-data
+            public IFormFile Image { get; set; }
+        }
     }
 }

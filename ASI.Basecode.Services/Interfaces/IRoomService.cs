@@ -10,14 +10,14 @@ namespace ASI.Basecode.Services.Interfaces
     {
         IQueryable<Room> GetRooms();
         Room GetById(string roomId);
-        void Create(Room room);
-        void Update(Room room);
-        void Delete(string roomId);
+        void Create(Room room, int? actorId = null);
+        void Update(Room room, int? actorId = null);
+        void Delete(string roomId, int? actorId = null);
 
         Task<List<Room>> GetRoomsAsync(CancellationToken cancellationToken = default);
         Task<Room> GetByIdAsync(string roomId, CancellationToken cancellationToken = default);
-        Task CreateAsync(Room room, CancellationToken cancellationToken = default);
-        Task UpdateAsync(Room room, CancellationToken cancellationToken = default);
-        Task DeleteAsync(string roomId, CancellationToken cancellationToken = default);
+        Task CreateAsync(Room room, int? actorId = null, CancellationToken cancellationToken = default);
+        Task UpdateAsync(Room room, int? actorId = null, CancellationToken cancellationToken = default);
+        Task DeleteAsync(string roomId, int? actorId = null, CancellationToken cancellationToken = default);
     }
 }

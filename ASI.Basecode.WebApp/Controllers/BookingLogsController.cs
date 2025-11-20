@@ -8,6 +8,7 @@ using Microsoft.Extensions.Configuration;
 using AutoMapper;
 using System.Threading;
 using System.Threading.Tasks;
+using System;
 
 namespace ASI.Basecode.WebApp.Controllers
 {
@@ -63,6 +64,40 @@ namespace ASI.Basecode.WebApp.Controllers
         {
             await _logService.DeleteAsync(id, cancellationToken);
             return NoContent();
+        }
+
+        // TestInsert endpoint for diagnostics
+        [HttpPost("TestInsert")]
+        public async Task<IActionResult> TestInsert(CancellationToken cancellationToken)
+        {
+            try
+            {
+                var log = new BookingLog
+                {
+                    BookingIdString = "0",
+                    BookingName = "Test Booking",
+                    AuthorId = null,
+                    AuthorName = null,
+                    ChangeType = "test",
+                    Message = "test insert",
+                    Timestamp = DateTime.UtcNow
+                };
+
+                await _logService.CreateAsync(log, cancellationToken);
+                return CreatedAtAction(nameof(Get), new { id = log.BookingLogId }, log);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Failed to insert test BookingLog");
+                var list = new System.Collections.Generic.List<string>();
+                var e = ex;
+                while (e != null)
+                {
+                    list.Add(e.Message);
+                    e = e.InnerException;
+                }
+                return StatusCode(500, new { error = "Test insert failed", details = list });
+            }
         }
     }
 }

@@ -19,13 +19,11 @@ namespace ASI.Basecode.Services.Services
             _repository = repository;
         }
 
-        public LoginResult AuthenticateUser(string userId, string password, ref User user)
+        public LoginResult AuthenticateUser(int id, string password, ref User user)
         {
             user = new User();
             var passwordKey = PasswordManager.EncryptPassword(password);
-            user = _repository.GetUsers().Where(x => x.UserId == userId &&
-                                                     x.PasswordHash == passwordKey).FirstOrDefault();
-
+            user = _repository.GetUsers().Where(x => x.Id == id && x.PasswordHash == passwordKey).FirstOrDefault();
             return user != null ? LoginResult.Success : LoginResult.Failed;
         }
 

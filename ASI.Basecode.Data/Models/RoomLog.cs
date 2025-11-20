@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ASI.Basecode.Data.Models;
 
@@ -7,17 +8,20 @@ public partial class RoomLog
 {
     public int RoomLogId { get; set; }
 
-    public string RoomId { get; set; }
+    public string RoomIdString { get; set; } // copy of RoomId for audit
 
-    public int? UserRefId { get; set; }
+    public string RoomName { get; set; } // now persisted
 
-    public string EventType { get; set; }
+    // Author: numeric user id who made the change
+    public int? AuthorId { get; set; } // new audit field
 
-    public string CurrentStatus { get; set; }
+    public string AuthorName { get; set; } // new audit field
+
+    // Change type: create, update, delete, activate, inactivate
+    public string ChangeType { get; set; }
+
+    // Descriptive message about the change
+    public string Message { get; set; }
 
     public DateTime? Timestamp { get; set; }
-
-    public virtual Room Room { get; set; }
-
-    public virtual User User { get; set; }
 }
