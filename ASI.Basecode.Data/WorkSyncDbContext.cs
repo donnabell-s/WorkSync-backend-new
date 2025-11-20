@@ -32,6 +32,10 @@ namespace ASI.Basecode.Data // Ensure this matches the project root namespace
 
         public virtual DbSet<UserPreference> UserPreferences { get; set; }
 
+        //Added
+        public virtual DbSet<Notification> Notifications { get; set; }
+
+
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
             => optionsBuilder.UseSqlServer("Addr=localhost; database=WorkSync_db; Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True");
@@ -54,10 +58,8 @@ namespace ASI.Basecode.Data // Ensure this matches the project root namespace
                 entity.Property(e => e.Status).HasMaxLength(50);
                 entity.Property(e => e.Title).HasMaxLength(200);
 
-                // ExpectedAttendees column mapping
                 entity.Property<int?>("ExpectedAttendees");
 
-                // UserRefId is the numeric FK to Users.Id
                 entity.Property<int?>("UserRefId");
 
                 entity.HasOne(d => d.Room).WithMany(p => p.Bookings)
@@ -75,17 +77,13 @@ namespace ASI.Basecode.Data // Ensure this matches the project root namespace
 
                 entity.ToTable("BookingLogs", "ws");
 
-                // allow DB to generate identity for BookingLogId
                 entity.Property(e => e.BookingLogId).ValueGeneratedOnAdd();
-                // Map our ChangeType -> existing DB column "EventType"
                 entity.Property(e => e.ChangeType).HasMaxLength(100).HasColumnName("EventType");
-                // Map our Message -> existing DB column "CurrentStatus" (reuse column for short messages)
                 entity.Property(e => e.Message).HasMaxLength(4000).HasColumnName("CurrentStatus");
                 entity.Property(e => e.BookingIdString).HasMaxLength(50).IsUnicode(false);
                 entity.Property(e => e.BookingName).HasMaxLength(200);
                 entity.Property(e => e.AuthorId);
                 entity.Property(e => e.AuthorName).HasMaxLength(100);
-                // Remove UserRefId, no navigation to Booking/User
             });
 
             modelBuilder.Entity<Room>(entity =>
@@ -105,7 +103,6 @@ namespace ASI.Basecode.Data // Ensure this matches the project root namespace
                     .HasMaxLength(200);
                 entity.Property(e => e.SizeLabel).HasMaxLength(50);
                 entity.Property(e => e.Status).HasMaxLength(50);
-                // Configure ImageUrl column to persist image URL
                 entity.Property(e => e.ImageUrl)
                     .HasMaxLength(500)
                     .IsUnicode(false)
@@ -135,17 +132,13 @@ namespace ASI.Basecode.Data // Ensure this matches the project root namespace
 
                 entity.ToTable("RoomLogs", "ws");
 
-                // allow DB to generate identity for RoomLogId
                 entity.Property(e => e.RoomLogId).ValueGeneratedOnAdd();
-                // Map ChangeType -> existing DB column "EventType"
                 entity.Property(e => e.ChangeType).HasMaxLength(100).HasColumnName("EventType");
-                // Map Message -> existing DB column "CurrentStatus" (reuse column)
                 entity.Property(e => e.Message).HasMaxLength(4000).HasColumnName("CurrentStatus");
                 entity.Property(e => e.RoomIdString).HasMaxLength(50).IsUnicode(false);
                 entity.Property(e => e.RoomName).HasMaxLength(200);
                 entity.Property(e => e.AuthorId);
                 entity.Property(e => e.AuthorName).HasMaxLength(100);
-                // No FK or navigation to Room/User
             });
 
             modelBuilder.Entity<Session>(entity =>
@@ -166,7 +159,6 @@ namespace ASI.Basecode.Data // Ensure this matches the project root namespace
 
             modelBuilder.Entity<User>(entity =>
             {
-                // Use numeric Id as primary key
                 entity.HasKey(e => e.Id).HasName("PK_Users_Id");
                 entity.Property(e => e.Id).ValueGeneratedOnAdd();
                 entity.ToTable("Users", "ws");
@@ -194,6 +186,31 @@ namespace ASI.Basecode.Data // Ensure this matches the project root namespace
                 entity.HasOne(d => d.User).WithMany(p => p.UserPreferences)
                     .HasForeignKey("UserRefId")
                     .HasConstraintName("FK_UserPreferences_Users_Id");
+            });
+
+            // Added
+            modelBuilder.Entity<Notification>(entity =>
+            {
+                entity.HasKey(e => e.Id).HasName("PK_Notifications_Id");
+
+                entity.ToTable("Notifications", "ws");
+
+                entity.Property(e => e.Id).ValueGeneratedOnAdd();
+
+                entity.Property(e => e.Message)
+                    .IsRequired()
+                    .HasMaxLength(4000);
+
+                entity.Property(e => e.Type)
+                    .HasMaxLength(100);
+
+                entity.Property(e => e.IsRead)
+                    .HasDefaultValue(false);
+
+                entity.Property(e => e.CreatedAt)
+                    .HasDefaultValueSql("GETUTCDATE()");
+
+                entity.Property(e => e.UserId);
             });
 
             OnModelCreatingPartial(modelBuilder);
