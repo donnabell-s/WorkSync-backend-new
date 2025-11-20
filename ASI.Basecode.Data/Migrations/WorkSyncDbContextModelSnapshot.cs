@@ -129,6 +129,157 @@ namespace ASI.Basecode.Data.Migrations
                     b.ToTable("BookingLogs", "ws");
                 });
 
+            modelBuilder.Entity("ASI.Basecode.Data.Models.DailySummary", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AvailableRooms")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CompletedBookings")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("LastComputedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("MaintenanceRooms")
+                        .HasColumnType("int");
+
+                    b.Property<int>("OngoingBookings")
+                        .HasColumnType("int");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<DateTime>("SummaryDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("TotalAvailableMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TotalBookedMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TotalBookings")
+                        .HasColumnType("int");
+
+                    b.Property<double>("UtilizationRate")
+                        .HasColumnType("float");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SummaryDate")
+                        .IsUnique();
+
+                    b.ToTable("DailySummaries", "ws");
+                });
+
+            modelBuilder.Entity("ASI.Basecode.Data.Models.HourlyStat", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("BookedMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<int>("BookingCount")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Hour")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("LastComputedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<double>("OccupancyRate")
+                        .HasColumnType("float");
+
+                    b.Property<string>("RoomCode")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("RoomId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
+                    b.Property<string>("RoomName")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<DateTime>("StatDate")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RoomId");
+
+                    b.HasIndex("StatDate");
+
+                    b.HasIndex("StatDate", "RoomId", "Hour")
+                        .IsUnique();
+
+                    b.ToTable("HourlyStats", "ws");
+                });
+
+            modelBuilder.Entity("ASI.Basecode.Data.Models.MetricsComputationLog", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("ComputationDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long?>("DurationMs")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("ErrorMessage")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<string>("MetricType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("RecordsProcessed")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("StartedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MetricType", "ComputationDate", "Status");
+
+                    b.ToTable("MetricsComputationLog", "ws");
+                });
+
             modelBuilder.Entity("ASI.Basecode.Data.Models.Room", b =>
                 {
                     b.Property<string>("RoomId")
@@ -393,6 +544,17 @@ namespace ASI.Basecode.Data.Migrations
                     b.HasOne("ASI.Basecode.Data.Models.User", null)
                         .WithMany("BookingLogs")
                         .HasForeignKey("UserId");
+                });
+
+            modelBuilder.Entity("ASI.Basecode.Data.Models.HourlyStat", b =>
+                {
+                    b.HasOne("ASI.Basecode.Data.Models.Room", "Room")
+                        .WithMany()
+                        .HasForeignKey("RoomId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Room");
                 });
 
             modelBuilder.Entity("ASI.Basecode.Data.Models.RoomAmenity", b =>

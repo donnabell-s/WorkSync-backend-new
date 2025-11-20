@@ -1,4 +1,4 @@
-﻿using ASI.Basecode.Data;
+using ASI.Basecode.Data;
 using ASI.Basecode.Data.Interfaces;
 using ASI.Basecode.Data.Repositories;
 using ASI.Basecode.Services.Interfaces;
@@ -45,6 +45,9 @@ namespace ASI.Basecode.WebApp
             this._services.AddScoped<IBookingLogService, BookingLogService>();
             this._services.AddScoped<IDashboardService, DashboardService>();
             this._services.AddScoped<IRoomLogService, RoomLogService>();
+            
+            // Metrics Service for optimized dashboard (uses MemoryCache)
+            this._services.AddScoped<IMetricsService, MetricsService>();
 
             // Repositories
             this._services.AddScoped<IUserRepository, UserRepository>();
@@ -55,27 +58,19 @@ namespace ASI.Basecode.WebApp
             this._services.AddScoped<ISessionRepository, SessionRepository>();
             this._services.AddScoped<IUserPreferenceRepository, UserPreferenceRepository>();
             this._services.AddScoped<IDashboardRepository, DashboardRepository>();
+            
+            // Metrics Repository for summary tables
+            this._services.AddScoped<IMetricsRepository, MetricsRepository>();
 
             // Manager Class
             this._services.AddScoped<SignInManager>();
 
+            // Background Services
+            // MetricsComputationHostedService runs every 5 minutes to compute dashboard metrics
+            this._services.AddHostedService<ASI.Basecode.WebApp.HostedServices.MetricsComputationHostedService>();
+
             this._services.AddHttpClient();
 
-            // CORS: allow Vite dev server origin. Include AllowCredentials if cookies are used from browser.
-            this._services.AddCors(options =>
-            {
-                options.AddPolicy("AllowVite",
-                    builder => builder
-                        .WithOrigins(
-                            "http://localhost:5173",
-                            "http://localhost:5174",
-                            "http://127.0.0.1:5173",
-                            "http://127.0.0.1:5174"
-                        )
-                        .AllowAnyHeader()
-                        .AllowAnyMethod()
-                        .AllowCredentials());
-            });
             this._services.AddControllers();
         }
     }
