@@ -14,6 +14,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
 using System.Globalization;
+using Microsoft.EntityFrameworkCore;
 
 namespace ASI.Basecode.WebApp.Controllers
 {
@@ -531,7 +532,7 @@ namespace ASI.Basecode.WebApp.Controllers
 
         // New endpoint: returns bookings' start and end datetimes for a specified room
         /// <summary>
-        /// Returns all bookings for the given room, exposing only startDateTime and endDateTime.
+        /// Returns all approved bookings for the given room, exposing only startDateTime and endDateTime.
         /// GET /api/bookings/datetimes/{roomId}
         /// </summary>
         [HttpGet("{roomId}")]
@@ -540,17 +541,51 @@ namespace ASI.Basecode.WebApp.Controllers
             if (string.IsNullOrWhiteSpace(roomId))
                 return BadRequest(new { message = "roomId is required in the route" });
 
-            var items = await _bookingService.GetBookingsAsync(cancellationToken);
+            // normalize roomId for comparison in EF-translatable way
+            var roomIdNorm = roomId.ToLowerInvariant();
 
-            var results = items
-                .Where(b => string.Equals(b.RoomId, roomId, StringComparison.OrdinalIgnoreCase) && b.StartDatetime != null && b.EndDatetime != null)
+            // Use IQueryable from service to ensure server-side filtering
+            var baseQuery = _bookingService.GetBookings()
+                .Where(b => b.RoomId != null && b.RoomId.ToLower() == roomIdNorm);
+
+            // Compute status counts for diagnostics (runs on DB)
+            try
+            {
+                var statusCounts = await baseQuery
+                    .GroupBy(b => (b.Status ?? string.Empty).ToLower())
+                    .Select(g => new { Status = g.Key, Count = g.Count() })
+                    .ToListAsync(cancellationToken);
+
+                if (_logger != null)
+                {
+                    var countsJson = System.Text.Json.JsonSerializer.Serialize(statusCounts);
+                    _logger.LogInformation("Booking status counts for room {RoomId}: {Counts}", roomId, countsJson);
+                }
+
+                // Also expose counts in a response header for debugging (as JSON)
+                try
+                {
+                    Response.Headers["X-Booking-Status-Counts"] = System.Text.Json.JsonSerializer.Serialize(statusCounts);
+                }
+                catch { /* best-effort */ }
+            }
+            catch (Exception ex)
+            {
+                // Don't fail the endpoint if counts query fails; log and continue
+                _logger?.LogWarning(ex, "Failed to compute booking status counts for room {RoomId}", roomId);
+            }
+
+            // Filter to bookings that have approved status and non-null datetimes
+            var query = baseQuery.Where(b => b.StartDatetime != null && b.EndDatetime != null && (b.Status ?? string.Empty).ToLower() == "approved");
+
+            var results = await query
                 .Select(b => new
                 {
                     startDateTime = b.StartDatetime,
                     endDateTime = b.EndDatetime
                 })
                 .OrderBy(x => x.startDateTime)
-                .ToList();
+                .ToListAsync(cancellationToken);
 
             return Ok(results);
         }
