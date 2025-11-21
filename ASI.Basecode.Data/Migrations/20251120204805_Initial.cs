@@ -6,13 +6,58 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace ASI.Basecode.Data.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class Initial : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.EnsureSchema(
                 name: "ws");
+
+            migrationBuilder.CreateTable(
+                name: "DailySummaries",
+                schema: "ws",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    SummaryDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    TotalBookings = table.Column<int>(type: "int", nullable: false),
+                    CompletedBookings = table.Column<int>(type: "int", nullable: false),
+                    OngoingBookings = table.Column<int>(type: "int", nullable: false),
+                    AvailableRooms = table.Column<int>(type: "int", nullable: false),
+                    MaintenanceRooms = table.Column<int>(type: "int", nullable: false),
+                    TotalBookedMinutes = table.Column<int>(type: "int", nullable: false),
+                    TotalAvailableMinutes = table.Column<int>(type: "int", nullable: false),
+                    UtilizationRate = table.Column<double>(type: "float", nullable: false),
+                    LastComputedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    RowVersion = table.Column<byte[]>(type: "rowversion", rowVersion: true, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_DailySummaries", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "MetricsComputationLog",
+                schema: "ws",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    MetricType = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    ComputationDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    StartedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CompletedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    Status = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
+                    RecordsProcessed = table.Column<int>(type: "int", nullable: false),
+                    ErrorMessage = table.Column<string>(type: "nvarchar(4000)", maxLength: 4000, nullable: true),
+                    DurationMs = table.Column<long>(type: "bigint", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_MetricsComputationLog", x => x.Id);
+                });
 
             migrationBuilder.CreateTable(
                 name: "Rooms",
@@ -56,6 +101,36 @@ namespace ASI.Basecode.Data.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Users_Id", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "HourlyStats",
+                schema: "ws",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    StatDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    Hour = table.Column<int>(type: "int", nullable: false),
+                    RoomId = table.Column<string>(type: "varchar(50)", maxLength: 50, nullable: false),
+                    RoomCode = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
+                    RoomName = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: true),
+                    BookedMinutes = table.Column<int>(type: "int", nullable: false),
+                    OccupancyRate = table.Column<double>(type: "float", nullable: false),
+                    BookingCount = table.Column<int>(type: "int", nullable: false),
+                    LastComputedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    RowVersion = table.Column<byte[]>(type: "rowversion", rowVersion: true, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_HourlyStats", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_HourlyStats_Rooms_RoomId",
+                        column: x => x.RoomId,
+                        principalSchema: "ws",
+                        principalTable: "Rooms",
+                        principalColumn: "RoomId",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -252,6 +327,38 @@ namespace ASI.Basecode.Data.Migrations
                 column: "UserRefId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_DailySummaries_SummaryDate",
+                schema: "ws",
+                table: "DailySummaries",
+                column: "SummaryDate",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_HourlyStats_RoomId",
+                schema: "ws",
+                table: "HourlyStats",
+                column: "RoomId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_HourlyStats_StatDate",
+                schema: "ws",
+                table: "HourlyStats",
+                column: "StatDate");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_HourlyStats_StatDate_RoomId_Hour",
+                schema: "ws",
+                table: "HourlyStats",
+                columns: new[] { "StatDate", "RoomId", "Hour" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_MetricsComputationLog_MetricType_ComputationDate_Status",
+                schema: "ws",
+                table: "MetricsComputationLog",
+                columns: new[] { "MetricType", "ComputationDate", "Status" });
+
+            migrationBuilder.CreateIndex(
                 name: "IX_RoomLogs_RoomId",
                 schema: "ws",
                 table: "RoomLogs",
@@ -289,6 +396,18 @@ namespace ASI.Basecode.Data.Migrations
         {
             migrationBuilder.DropTable(
                 name: "BookingLogs",
+                schema: "ws");
+
+            migrationBuilder.DropTable(
+                name: "DailySummaries",
+                schema: "ws");
+
+            migrationBuilder.DropTable(
+                name: "HourlyStats",
+                schema: "ws");
+
+            migrationBuilder.DropTable(
+                name: "MetricsComputationLog",
                 schema: "ws");
 
             migrationBuilder.DropTable(

@@ -23,48 +23,52 @@ namespace ASI.Basecode.Data.Repositories
             var todayEnd = date.Date.AddDays(1);
             var now = DateTime.Now;
 
-            // Available rooms (status = 'active' or similar)
+            // Available rooms (using standardized status: "Available")
             var availableRoomsCount = await GetDbSet<Room>()
                 .AsNoTracking()
-                .CountAsync(r => r.Status != null && (
-                    r.Status.ToLower() == "active" || 
-                    r.Status.ToLower() == "available"
-                ), cancellationToken);
+                .CountAsync(r => r.Status == "Available", cancellationToken);
 
-            // Rooms under maintenance
+            // Rooms under maintenance (using standardized status: "Under Maintenance")
             var maintenanceRoomsCount = await GetDbSet<Room>()
                 .AsNoTracking()
-                .CountAsync(r => r.Status != null && r.Status.ToLower() == "maintenance", cancellationToken);
+                .CountAsync(r => r.Status == "Under Maintenance", cancellationToken);
 
-            // Today's bookings
+            // Today's bookings (only Approved bookings)
             var todaysBookingsCount = await GetDbSet<Booking>()
                 .AsNoTracking()
-                .CountAsync(b => b.StartDatetime.HasValue && b.StartDatetime.Value.Date == todayStart, cancellationToken);
+                .CountAsync(b => b.StartDatetime.HasValue && 
+                               b.StartDatetime.Value.Date == todayStart &&
+                               b.Status == "Approved", cancellationToken);
 
-            // Ongoing bookings
+            // Ongoing bookings (only Approved bookings that are currently in progress)
             var ongoingBookingsCount = await GetDbSet<Booking>()
                 .AsNoTracking()
                 .CountAsync(b => b.StartDatetime.HasValue && b.EndDatetime.HasValue &&
-                                b.StartDatetime.Value <= now && b.EndDatetime.Value >= now, cancellationToken);
+                                b.StartDatetime.Value <= now && 
+                                b.EndDatetime.Value >= now &&
+                                b.Status == "Approved", cancellationToken);
 
-            // Bookings completed today
+            // Bookings completed today (Approved bookings that have ended)
             var completedBookingsCount = await GetDbSet<Booking>()
                 .AsNoTracking()
-                .CountAsync(b => b.EndDatetime.HasValue && b.EndDatetime.Value.Date == todayStart, cancellationToken);
+                .CountAsync(b => b.EndDatetime.HasValue && 
+                               b.EndDatetime.Value.Date == todayStart &&
+                               b.EndDatetime.Value <= now &&
+                               b.Status == "Approved", cancellationToken);
 
-            // Utilization rate calculation - Fixed to directly calculate from Bookings
-            // Calculate total booked minutes from bookings that occur on today
+            // Utilization rate calculation - Only count Approved bookings
             var totalBookedMinutes = await GetDbSet<Booking>()
                 .AsNoTracking()
                 .Where(b => b.StartDatetime.HasValue && b.EndDatetime.HasValue &&
                            b.StartDatetime.Value.Date == todayStart &&
-                           b.Status != null && b.Status.ToLower() != "declined")
+                           b.Status == "Approved")
                 .SumAsync(b => EF.Functions.DateDiffMinute(b.StartDatetime.Value, b.EndDatetime.Value), cancellationToken);
 
             // Calculate total available minutes: assume 8 hours per room per day (480 minutes)
+            // Only count Available and Occupied rooms (exclude Under Maintenance)
             var totalRooms = await GetDbSet<Room>()
                 .AsNoTracking()
-                .CountAsync(r => r.Status != null && r.Status.ToLower() != "maintenance", cancellationToken);
+                .CountAsync(r => r.Status == "Available" || r.Status == "Occupied", cancellationToken);
 
             var totalAvailableMinutes = totalRooms * 480; // 8 hours * 60 minutes
             var utilizationPercentage = totalAvailableMinutes > 0 
@@ -93,22 +97,25 @@ namespace ASI.Basecode.Data.Repositories
             {
                 var nextDay = date.AddDays(1);
 
-                // Count bookings for this date
+                // Count only Approved bookings for this date
                 var bookingsCount = await GetDbSet<Booking>()
                     .AsNoTracking()
                     .CountAsync(b => b.StartDatetime.HasValue && 
-                               b.StartDatetime.Value.Date == date, cancellationToken);
+                               b.StartDatetime.Value.Date == date &&
+                               b.Status == "Approved", cancellationToken);
 
-                // Calculate utilization for this date
+                // Calculate utilization for this date - only Approved bookings
                 var totalBookedMinutes = await GetDbSet<Booking>()
                     .AsNoTracking()
                     .Where(b => b.StartDatetime.HasValue && b.EndDatetime.HasValue &&
-                              b.StartDatetime.Value.Date == date)
+                              b.StartDatetime.Value.Date == date &&
+                              b.Status == "Approved")
                     .SumAsync(b => EF.Functions.DateDiffMinute(b.StartDatetime.Value, b.EndDatetime.Value), cancellationToken);
 
+                // Only count Available and Occupied rooms (exclude Under Maintenance)
                 var totalRooms = await GetDbSet<Room>()
                     .AsNoTracking()
-                    .CountAsync(r => r.Status != null && r.Status.ToLower() != "maintenance", cancellationToken);
+                    .CountAsync(r => r.Status == "Available" || r.Status == "Occupied", cancellationToken);
 
                 var totalAvailableMinutes = totalRooms * 480; // 8 hours * 60 minutes
                 var utilizationPercentage = totalAvailableMinutes > 0 
@@ -134,15 +141,18 @@ namespace ASI.Basecode.Data.Repositories
             var dateStart = date.Date;
             var dateEnd = date.Date.AddDays(1);
 
-            // Get all bookings for the specified date
+            // Get all Approved bookings for the specified date
             var bookings = await GetDbSet<Booking>()
                 .AsNoTracking()
                 .Include(b => b.Room)
                 .Where(b => b.StartDatetime.HasValue && b.EndDatetime.HasValue &&
                           b.StartDatetime.Value.Date == dateStart &&
+                          b.Status == "Approved" &&
                           b.Room != null)
                 .Select(b => new
                 {
+                    b.RoomId,
+                    RoomCode = b.Room.Code,
                     RoomName = b.Room.Name,
                     StartTime = b.StartDatetime.Value,
                     EndTime = b.EndDatetime.Value
@@ -151,16 +161,15 @@ namespace ASI.Basecode.Data.Repositories
 
             var result = new List<PeakUsageViewModel>();
 
-            // Get all rooms
+            // Get all Available and Occupied rooms (exclude Under Maintenance)
             var rooms = await GetDbSet<Room>()
                 .AsNoTracking()
-                .Where(r => r.Status != null && r.Status.ToLower() != "maintenance")
-                .Select(r => r.Name)
-                .Distinct()
+                .Where(r => r.Status == "Available" || r.Status == "Occupied")
+                .Select(r => new { r.RoomId, r.Code, r.Name })
                 .ToListAsync(cancellationToken);
 
             // Calculate occupancy for each room for each hour (0-23)
-            foreach (var roomName in rooms)
+            foreach (var room in rooms)
             {
                 for (int hour = 0; hour < 24; hour++)
                 {
@@ -169,7 +178,7 @@ namespace ASI.Basecode.Data.Repositories
 
                     // Calculate total minutes booked in this hour for this room
                     var minutesBooked = bookings
-                        .Where(b => b.RoomName == roomName)
+                        .Where(b => b.RoomId == room.RoomId)
                         .Sum(b =>
                         {
                             var overlapStart = b.StartTime < hourStart ? hourStart : b.StartTime;
@@ -185,7 +194,8 @@ namespace ASI.Basecode.Data.Repositories
 
                     result.Add(new PeakUsageViewModel
                     {
-                        RoomName = roomName,
+                        Code = room.Code,
+                        RoomName = room.Name,
                         Hour = hour,
                         OccupancyRate = Math.Round(occupancyRate, 2)
                     });

@@ -1,4 +1,4 @@
-﻿using ASI.Basecode.Data;
+using ASI.Basecode.Data;
 using ASI.Basecode.Resources.Constants;
 using ASI.Basecode.Services.Manager;
 using ASI.Basecode.WebApp.Authentication;
@@ -91,12 +91,36 @@ namespace ASI.Basecode.WebApp
 
             services.AddMemoryCache();
 
+            // CORS Configuration - Must be defined before other services
+            services.AddCors(options =>
+            {
+                options.AddPolicy("AllowVite", builder =>
+                {
+                    builder.WithOrigins(
+                            "http://localhost:5173",
+                            "http://localhost:5174",
+                            "http://127.0.0.1:5173",
+                            "http://127.0.0.1:5174"
+                        )
+                        .AllowAnyMethod()
+                        .AllowAnyHeader()
+                        .AllowCredentials()
+                        .SetIsOriginAllowed(origin => true) // Allow any origin during development
+                        .WithExposedHeaders("Content-Disposition"); // Expose headers if needed
+                });
+            });
+
             // Register SQL database configuration context as services.
             services.AddDbContext<WorkSyncDbContext>(options =>
             {
                 options.UseSqlServer(
                     Configuration.GetConnectionString("DefaultConnection"),
-                    sqlServerOptions => sqlServerOptions.CommandTimeout(120));
+                    sqlServerOptions =>
+                    {
+                        sqlServerOptions.CommandTimeout(120);
+                        // Specify that migrations are in the Data project
+                        sqlServerOptions.MigrationsAssembly("ASI.Basecode.Data");
+                    });
             });
 
             services.AddRazorPages().AddRazorRuntimeCompilation();
@@ -161,18 +185,20 @@ namespace ASI.Basecode.WebApp
             var options = this._app.ApplicationServices.GetService<IOptions<RequestLocalizationOptions>>();
             this._app.UseRequestLocalization(options.Value);
 
-            // Routing must come before CORS
+            // IMPORTANT: Routing must come first
             this._app.UseRouting();
 
-            // Apply Vite CORS policy
+            // CORS must be after UseRouting() and before UseAuthentication()
             this._app.UseCors("AllowVite");
 
             // Session
             this._app.UseSession();
 
+            // Authentication and Authorization
             this._app.UseAuthentication();
             this._app.UseAuthorization();
 
+            // Endpoints must be last
             this._app.UseEndpoints(endpoints => endpoints.MapControllers());
         }
     }

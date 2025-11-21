@@ -32,9 +32,11 @@ namespace ASI.Basecode.Data // Ensure this matches the project root namespace
 
         public virtual DbSet<UserPreference> UserPreferences { get; set; }
 
-        //Added
-        public virtual DbSet<Notification> Notifications { get; set; }
+        public virtual DbSet<DailySummary> DailySummaries { get; set; }
 
+        public virtual DbSet<HourlyStat> HourlyStats { get; set; }
+
+        public virtual DbSet<MetricsComputationLog> MetricsComputationLogs { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
@@ -188,29 +190,56 @@ namespace ASI.Basecode.Data // Ensure this matches the project root namespace
                     .HasConstraintName("FK_UserPreferences_Users_Id");
             });
 
-            // Added
-            modelBuilder.Entity<Notification>(entity =>
+            // Configure DailySummary entity
+            modelBuilder.Entity<DailySummary>(entity =>
             {
-                entity.HasKey(e => e.Id).HasName("PK_Notifications_Id");
+                entity.HasKey(e => e.Id);
+                entity.ToTable("DailySummaries", "ws");
 
-                entity.ToTable("Notifications", "ws");
+                entity.Property(e => e.SummaryDate).IsRequired();
+                entity.Property(e => e.LastComputedAt).IsRequired();
 
-                entity.Property(e => e.Id).ValueGeneratedOnAdd();
+                // Create unique index on SummaryDate for fast lookups
+                entity.HasIndex(e => e.SummaryDate).IsUnique();
+            });
 
-                entity.Property(e => e.Message)
-                    .IsRequired()
-                    .HasMaxLength(4000);
+            // Configure HourlyStat entity
+            modelBuilder.Entity<HourlyStat>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.ToTable("HourlyStats", "ws");
 
-                entity.Property(e => e.Type)
-                    .HasMaxLength(100);
+                entity.Property(e => e.StatDate).IsRequired();
+                entity.Property(e => e.Hour).IsRequired();
+                entity.Property(e => e.RoomId).HasMaxLength(50).IsRequired();
+                entity.Property(e => e.RoomName).HasMaxLength(200);
+                entity.Property(e => e.LastComputedAt).IsRequired();
 
-                entity.Property(e => e.IsRead)
-                    .HasDefaultValue(false);
+                // Create composite index for fast queries by date, room, and hour
+                entity.HasIndex(e => new { e.StatDate, e.RoomId, e.Hour }).IsUnique();
+                entity.HasIndex(e => e.StatDate);
 
-                entity.Property(e => e.CreatedAt)
-                    .HasDefaultValueSql("GETUTCDATE()");
+                // Configure relationship with Room
+                entity.HasOne(e => e.Room)
+                    .WithMany()
+                    .HasForeignKey(e => e.RoomId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
 
-                entity.Property(e => e.UserId);
+            // Configure MetricsComputationLog entity
+            modelBuilder.Entity<MetricsComputationLog>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.ToTable("MetricsComputationLog", "ws");
+
+                entity.Property(e => e.MetricType).HasMaxLength(100).IsRequired();
+                entity.Property(e => e.ComputationDate).IsRequired();
+                entity.Property(e => e.StartedAt).IsRequired();
+                entity.Property(e => e.Status).HasMaxLength(50).IsRequired();
+                entity.Property(e => e.ErrorMessage).HasMaxLength(4000);
+
+                // Create index for querying latest computations
+                entity.HasIndex(e => new { e.MetricType, e.ComputationDate, e.Status });
             });
 
             OnModelCreatingPartial(modelBuilder);
