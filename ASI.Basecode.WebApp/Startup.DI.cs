@@ -39,6 +39,7 @@ namespace ASI.Basecode.WebApp
             this._services.AddScoped<IRoomService, RoomService>();
             this._services.AddScoped<ISessionService, SessionService>();
             this._services.AddScoped<IUserPreferenceService, UserPreferenceService>();
+            this._services.AddScoped<ISettingsService, SettingsService>();
             this._services.AddScoped<IBookingLogService, BookingLogService>();
             this._services.AddScoped<IUserAdminService, UserAdminService>();
             this._services.AddScoped<INotificationService, NotificationService>();
