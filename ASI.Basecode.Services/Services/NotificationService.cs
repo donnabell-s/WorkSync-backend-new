@@ -1,42 +1,96 @@
-﻿using ASI.Basecode.Data.Interfaces;
+using ASI.Basecode.Data.Interfaces;
 using ASI.Basecode.Data.Models;
 using ASI.Basecode.Services.Interfaces;
-using System;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Collections.Generic;
 
 namespace ASI.Basecode.Services.Services
 {
     public class NotificationService : INotificationService
     {
-        private readonly INotificationRepository _repo;
+        private readonly INotificationRepository _notificationRepository;
+        private readonly IUnitOfWork _unitOfWork;
 
-        public NotificationService(INotificationRepository repo)
+        public NotificationService(INotificationRepository notificationRepository, IUnitOfWork unitOfWork)
         {
-            _repo = repo;
+            _notificationRepository = notificationRepository;
+            _unitOfWork = unitOfWork;
         }
 
-        public void CreateNotification(string message, string type = "info", int? userId = null)
-        {
-            var noti = new Notification
-            {
-                Message = message,
-                Type = type,
-                UserId = userId,
-                CreatedAt = DateTime.UtcNow
-            };
+        public IQueryable<Notification> GetNotifications() => _notificationRepository.GetNotifications();
 
-            _repo.Add(noti);
+        public Notification GetById(int notificationId) => _notificationRepository.GetById(notificationId);
+
+        public void Create(Notification notification)
+        {
+            notification.CreatedAt = System.DateTime.UtcNow;
+            notification.IsRead = false;
+            _notificationRepository.Add(notification);
+            _unitOfWork.SaveChanges();
         }
 
-        public IEnumerable<Notification> GetAdminNotifications()
+        public void Update(Notification notification)
         {
-            return _repo.GetAdminNotifications();
+            _notificationRepository.Update(notification);
+            _unitOfWork.SaveChanges();
         }
 
-        public void MarkAsRead(int id)
+        public void Delete(int notificationId)
         {
-            _repo.MarkAsRead(id);
+            var entity = _notificationRepository.GetById(notificationId);
+            if (entity == null) return;
+            _notificationRepository.Delete(entity);
+            _unitOfWork.SaveChanges();
+        }
+
+        public async Task<List<Notification>> GetNotificationsAsync(CancellationToken cancellationToken = default)
+        {
+            return await _notificationRepository.GetNotificationsAsync(cancellationToken);
+        }
+
+        public async Task<List<Notification>> GetByUserIdAsync(int userId, CancellationToken cancellationToken = default)
+        {
+            return await _notificationRepository.GetByUserIdAsync(userId, cancellationToken);
+        }
+
+        public async Task<Notification> GetByIdAsync(int notificationId, CancellationToken cancellationToken = default)
+        {
+            return await _notificationRepository.GetByIdAsync(notificationId, cancellationToken);
+        }
+
+        public async Task CreateAsync(Notification notification, CancellationToken cancellationToken = default)
+        {
+            notification.CreatedAt = System.DateTime.UtcNow;
+            notification.IsRead = false;
+            await _notificationRepository.AddAsync(notification, cancellationToken);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+
+        public async Task UpdateAsync(Notification notification, CancellationToken cancellationToken = default)
+        {
+            _notificationRepository.Update(notification);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+
+        public async Task DeleteAsync(int notificationId, CancellationToken cancellationToken = default)
+        {
+            var entity = await _notificationRepository.GetByIdAsync(notificationId, cancellationToken);
+            if (entity == null) return;
+            _notificationRepository.Delete(entity);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
+
+        public async Task MarkAsReadAsync(int notificationId, CancellationToken cancellationToken = default)
+        {
+            var entity = await _notificationRepository.GetByIdAsync(notificationId, cancellationToken);
+            if (entity == null) return;
+            entity.IsRead = true;
+            entity.ReadAt = System.DateTime.UtcNow;
+            _notificationRepository.Update(entity);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
         }
     }
 }
-//added
+

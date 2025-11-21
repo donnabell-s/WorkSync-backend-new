@@ -1,15 +1,26 @@
-﻿using System;
+using System;
+using System.Collections.Generic;
 
-namespace ASI.Basecode.Data.Models
+namespace ASI.Basecode.Data.Models;
+
+public partial class Notification
 {
-    public class Notification
-    {
-        public int Id { get; set; }
-        public string Message { get; set; } = string.Empty;
-        public string Type { get; set; } = "info"; 
-        public bool IsRead { get; set; } = false;
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-        public int? UserId { get; set; } 
-    }
+    public int NotificationId { get; set; }
+
+    public int? UserRefId { get; set; }
+
+    public string Title { get; set; }
+
+    public string Message { get; set; }
+
+    public string Type { get; set; }
+
+    public bool IsRead { get; set; }
+
+    public DateTime? CreatedAt { get; set; }
+
+    public DateTime? ReadAt { get; set; }
+
+    public virtual User User { get; set; }
 }
-//added
+

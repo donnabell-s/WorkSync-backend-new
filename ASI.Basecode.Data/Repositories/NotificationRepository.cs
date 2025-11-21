@@ -1,46 +1,47 @@
-﻿using ASI.Basecode.Data.Interfaces;
+using ASI.Basecode.Data.Interfaces;
 using ASI.Basecode.Data.Models;
-using System.Collections.Generic;
+using Basecode.Data.Repositories;
+using Microsoft.EntityFrameworkCore;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Collections.Generic;
 
 namespace ASI.Basecode.Data.Repositories
 {
-    public class NotificationRepository : INotificationRepository
+    public class NotificationRepository : BaseRepository, INotificationRepository
     {
-        private readonly WorkSyncDbContext _context;
+        public NotificationRepository(IUnitOfWork unitOfWork) : base(unitOfWork) { }
 
-        public NotificationRepository(WorkSyncDbContext context)
+        public IQueryable<Notification> GetNotifications() => GetDbSet<Notification>();
+
+        public Notification GetById(int notificationId) => Context.Set<Notification>().Find(notificationId);
+
+        public void Add(Notification entity) => GetDbSet<Notification>().Add(entity);
+
+        public void Update(Notification entity) => SetEntityState(entity, EntityState.Modified);
+
+        public void Delete(Notification entity) => GetDbSet<Notification>().Remove(entity);
+
+        public async Task<List<Notification>> GetNotificationsAsync(CancellationToken cancellationToken = default)
         {
-            _context = context;
+            return await GetDbSet<Notification>().ToListAsync(cancellationToken);
         }
 
-        public void Add(Notification notification)
+        public async Task<List<Notification>> GetByUserIdAsync(int userId, CancellationToken cancellationToken = default)
         {
-            _context.Notifications.Add(notification);
-            _context.SaveChanges();
+            return await GetDbSet<Notification>().Where(n => n.UserRefId == userId).ToListAsync(cancellationToken);
         }
 
-        public IEnumerable<Notification> GetAdminNotifications()
+        public async Task<Notification> GetByIdAsync(int notificationId, CancellationToken cancellationToken = default)
         {
-            return _context.Notifications
-                .OrderByDescending(n => n.CreatedAt)
-                .ToList();
+            return await Context.Set<Notification>().FindAsync(new object[] { notificationId }, cancellationToken).AsTask();
         }
 
-        public Notification Get(int id)
+        public async Task AddAsync(Notification entity, CancellationToken cancellationToken = default)
         {
-            return _context.Notifications.FirstOrDefault(n => n.Id == id);
-        }
-
-        public void MarkAsRead(int id)
-        {
-            var noti = _context.Notifications.FirstOrDefault(n => n.Id == id);
-            if (noti != null)
-            {
-                noti.IsRead = true;
-                _context.SaveChanges();
-            }
+            await GetDbSet<Notification>().AddAsync(entity, cancellationToken);
         }
     }
 }
-//added
+
