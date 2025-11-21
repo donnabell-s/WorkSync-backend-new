@@ -47,6 +47,40 @@ namespace ASI.Basecode.WebApp.Controllers
         }
 
         /// <summary>
+        /// Add new admin (SuperAdmin only)
+        /// </summary>
+        [HttpPost]
+        public async Task<IActionResult> Add([FromBody] User model, CancellationToken cancellationToken)
+        {
+            var userRole = User.FindFirstValue(ClaimTypes.Role);
+            if (userRole?.ToLower() != "superadmin")
+            {
+                return Forbid("Only SuperAdmin can add admins.");
+            }
+
+            if (model == null) return BadRequest();
+
+            if (string.IsNullOrWhiteSpace(model.Email) || string.IsNullOrWhiteSpace(model.PasswordHash))
+            {
+                return BadRequest(new { message = "Email and Password are required." });
+            }
+
+            // Check if admin already exists
+            var existing = await _userAdminService.GetUserByEmailAsync(model.Email, cancellationToken);
+            if (existing != null)
+            {
+                return Conflict(new { message = "Admin with this email already exists." });
+            }
+
+            // Ensure role is set to Admin
+            model.Role = "Admin";
+            model.IsActive = true;
+
+            await _userAdminService.CreateAdminAsync(model, cancellationToken);
+            return CreatedAtAction(nameof(Get), new { id = model.Id }, model);
+        }
+
+        /// <summary>
         /// View admin by ID (SuperAdmin only)
         /// </summary>
         [HttpGet("{id}")]
