@@ -18,12 +18,15 @@ namespace ASI.Basecode.Services.Services
         private readonly IBookingRepository _bookingRepository;
         private readonly IUnitOfWork _unitOfWork;
         private readonly WorkSyncDbContext _dbContext;
+        private readonly INotificationService _notificationService;
 
-        public BookingService(IBookingRepository bookingRepository, IUnitOfWork unitOfWork, WorkSyncDbContext dbContext)
+        public BookingService(IBookingRepository bookingRepository, IUnitOfWork unitOfWork, WorkSyncDbContext dbContext, INotificationService notificationService)
         {
             _bookingRepository = bookingRepository;
             _unitOfWork = unitOfWork;
             _dbContext = dbContext;
+            _notificationService = notificationService;//added
+
         }
 
         public IQueryable<Booking> GetBookings() => _bookingRepository.GetBookings();
@@ -71,6 +74,9 @@ namespace ASI.Basecode.Services.Services
             _unitOfWork.SaveChanges();
             AddLog(booking.BookingId, booking.Title, "create", "created booking", actorId);
             _unitOfWork.SaveChanges();
+
+            _notificationService.CreateNotification($"A new booking was created: {booking.Title}","booking"
+             );//added notification for new booking
         }
 
         public void Update(Booking booking, int? actorId = null, string changeTypeOverride = null, string messageOverride = null)
@@ -93,6 +99,9 @@ namespace ASI.Basecode.Services.Services
             _unitOfWork.SaveChanges();
             AddLog(existing.BookingId, existing.Title, changeType, message, actorId);
             _unitOfWork.SaveChanges();
+
+            _notificationService.CreateNotification( $"Booking updated: {existing.Title}","booking_update"
+            ); //added notification for booking update
         }
 
         public void Delete(int bookingId, int? actorId = null)
@@ -103,6 +112,9 @@ namespace ASI.Basecode.Services.Services
             _unitOfWork.SaveChanges();
             AddLog(entity.BookingId, entity.Title, "delete", "deleted booking", actorId);
             _unitOfWork.SaveChanges();
+
+            _notificationService.CreateNotification($"Booking cancelled: {entity.Title}","booking_cancel"
+            ); //added notification for booking deletion
         }
 
         public async Task<List<Booking>> GetBookingsAsync(CancellationToken cancellationToken = default) => await _bookingRepository.GetBookingsAsync(cancellationToken);
