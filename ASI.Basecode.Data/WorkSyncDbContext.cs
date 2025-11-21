@@ -32,10 +32,6 @@ namespace ASI.Basecode.Data // Ensure this matches the project root namespace
 
         public virtual DbSet<UserPreference> UserPreferences { get; set; }
 
-        public virtual DbSet<Notification> Notifications { get; set; }
-
-        public virtual DbSet<AuditLog> AuditLogs { get; set; }
-
         public virtual DbSet<DailySummary> DailySummaries { get; set; }
 
         public virtual DbSet<HourlyStat> HourlyStats { get; set; }
@@ -244,42 +240,6 @@ namespace ASI.Basecode.Data // Ensure this matches the project root namespace
 
                 // Create index for querying latest computations
                 entity.HasIndex(e => new { e.MetricType, e.ComputationDate, e.Status });
-            });
-
-            modelBuilder.Entity<Notification>(entity =>
-            {
-                entity.HasKey(e => e.NotificationId).HasName("PK__Notifica__20CF2E32");
-
-                entity.ToTable("Notifications", "ws");
-
-                entity.Property(e => e.NotificationId).ValueGeneratedOnAdd();
-                entity.Property(e => e.Title).HasMaxLength(200);
-                entity.Property(e => e.Message).HasMaxLength(2000);
-                entity.Property(e => e.Type).HasMaxLength(50);
-                entity.Property<int?>("UserRefId");
-
-                entity.HasOne(d => d.User).WithMany()
-                    .HasForeignKey("UserRefId")
-                    .HasConstraintName("FK_Notifications_Users_Id");
-            });
-
-            modelBuilder.Entity<AuditLog>(entity =>
-            {
-                entity.HasKey(e => e.AuditLogId).HasName("PK__AuditLogs__5AF33F33");
-
-                entity.ToTable("AuditLogs", "ws");
-
-                entity.Property(e => e.AuditLogId).ValueGeneratedOnAdd();
-                entity.Property(e => e.Action).HasMaxLength(100);
-                entity.Property(e => e.EntityType).HasMaxLength(100);
-                entity.Property(e => e.IpAddress).HasMaxLength(50);
-                entity.Property(e => e.OldValues).HasColumnType("nvarchar(max)");
-                entity.Property(e => e.NewValues).HasColumnType("nvarchar(max)");
-                entity.Property<int?>("UserRefId");
-
-                entity.HasOne(d => d.User).WithMany()
-                    .HasForeignKey("UserRefId")
-                    .HasConstraintName("FK_AuditLogs_Users_Id");
             });
 
             OnModelCreatingPartial(modelBuilder);

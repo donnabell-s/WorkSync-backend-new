@@ -42,11 +42,7 @@ namespace ASI.Basecode.WebApp
             this._services.AddScoped<IRoomService, RoomService>();
             this._services.AddScoped<ISessionService, SessionService>();
             this._services.AddScoped<IUserPreferenceService, UserPreferenceService>();
-            this._services.AddScoped<ISettingsService, SettingsService>();
             this._services.AddScoped<IBookingLogService, BookingLogService>();
-            this._services.AddScoped<IUserAdminService, UserAdminService>();
-            this._services.AddScoped<INotificationService, NotificationService>();
-            this._services.AddScoped<IAuditLogService, AuditLogService>();
             this._services.AddScoped<IDashboardService, DashboardService>();
             this._services.AddScoped<IRoomLogService, RoomLogService>();
             
@@ -61,8 +57,6 @@ namespace ASI.Basecode.WebApp
             this._services.AddScoped<IRoomLogRepository, RoomLogRepository>();
             this._services.AddScoped<ISessionRepository, SessionRepository>();
             this._services.AddScoped<IUserPreferenceRepository, UserPreferenceRepository>();
-            this._services.AddScoped<INotificationRepository, NotificationRepository>();
-            this._services.AddScoped<IAuditLogRepository, AuditLogRepository>();
             this._services.AddScoped<IDashboardRepository, DashboardRepository>();
             
             // Metrics Repository for summary tables
